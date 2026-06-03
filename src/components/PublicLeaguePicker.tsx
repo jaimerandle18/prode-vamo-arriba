@@ -157,7 +157,7 @@ export default function PublicLeaguePicker({
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      d="M9 5l7 7-7-7"
+                      d="M9 5l7 7-7 7"
                     />
                   </svg>
                 )}
