@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/sync-results?secret=${CRON_SECRET}",
-      "schedule": "*/10 * * * *"
+      "schedule": "* * * * *"
     }
   ]
 }
