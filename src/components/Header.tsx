@@ -16,7 +16,8 @@ export default function Header({
   const handleLogout = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
-    router.refresh();
+    localStorage.removeItem("pending_league");
+    router.push("/");
   };
 
   return (
