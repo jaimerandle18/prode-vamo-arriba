@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { Resend } from "resend";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -327,11 +328,20 @@ export async function GET(request: Request) {
       }
     }
 
+    // Send reminders for matches starting in ~10 minutes
+    let reminders_sent = 0;
+    try {
+      reminders_sent = await sendReminders();
+    } catch (e) {
+      console.error("Reminder error:", e);
+    }
+
     return NextResponse.json({
       ok: true,
       skipped: false,
       matches_updated: updated,
       matches_created: created,
+      reminders_sent,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
@@ -341,4 +351,95 @@ export async function GET(request: Request) {
       { status: 500 }
     );
   }
+}
+
+// ============================================
+// REMINDERS: mail 10 min antes del partido
+// ============================================
+
+const resend = process.env.RESEND_API_KEY
+  ? new Resend(process.env.RESEND_API_KEY)
+  : null;
+
+async function sendReminders(): Promise<number> {
+  if (!resend) return 0;
+
+  const now = new Date();
+  const in9min = new Date(now.getTime() + 9 * 60 * 1000);
+  const in11min = new Date(now.getTime() + 11 * 60 * 1000);
+
+  // Find matches starting in ~10 minutes (window of 9-11 min to catch exactly once)
+  const { data: upcomingMatches } = await supabase
+    .from("matches")
+    .select(
+      `id, match_date, status,
+      home_team:teams!matches_home_team_id_fkey(name, flag_emoji),
+      away_team:teams!matches_away_team_id_fkey(name, flag_emoji)`
+    )
+    .eq("status", "scheduled")
+    .gte("match_date", in9min.toISOString())
+    .lte("match_date", in11min.toISOString());
+
+  if (!upcomingMatches || upcomingMatches.length === 0) return 0;
+
+  // Get all users
+  const { data: users } = await supabase.auth.admin.listUsers();
+  if (!users?.users) return 0;
+
+  let sent = 0;
+
+  for (const match of upcomingMatches) {
+    const homeTeam = match.home_team as unknown as { name: string; flag_emoji: string };
+    const awayTeam = match.away_team as unknown as { name: string; flag_emoji: string };
+    if (!homeTeam || !awayTeam) continue;
+
+    const matchName = `${homeTeam.flag_emoji} ${homeTeam.name} vs ${awayTeam.name} ${awayTeam.flag_emoji}`;
+
+    // Get users who already predicted this match
+    const { data: predictions } = await supabase
+      .from("predictions")
+      .select("user_id")
+      .eq("match_id", match.id);
+
+    const predictedUserIds = new Set(predictions?.map((p) => p.user_id) ?? []);
+
+    // Send to users who haven't predicted
+    for (const user of users.users) {
+      if (predictedUserIds.has(user.id)) continue;
+      if (!user.email) continue;
+
+      try {
+        await resend.emails.send({
+          from: "Prode Mundial 2026 <onboarding@resend.dev>",
+          to: user.email,
+          subject: `⚽ ${homeTeam.name} vs ${awayTeam.name} arranca en 10 minutos!`,
+          html: `
+            <div style="font-family: sans-serif; max-width: 400px; margin: 0 auto; padding: 20px;">
+              <h2 style="text-align: center;">⚽ Prode Mundial 2026</h2>
+              <p style="text-align: center; font-size: 18px; font-weight: bold;">
+                ${matchName}
+              </p>
+              <p style="text-align: center; color: #e74c3c; font-weight: bold;">
+                Arranca en 10 minutos!
+              </p>
+              <p style="text-align: center;">
+                Loco no te olvides de cargar tu pronóstico antes de que arranque!
+              </p>
+              <div style="text-align: center; margin-top: 20px;">
+                <a href="https://prode-vamo-arriba.vercel.app"
+                   style="background: #22c55e; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">
+                  Cargar pronóstico
+                </a>
+              </div>
+            </div>
+          `,
+        });
+        sent++;
+      } catch (e) {
+        console.error("Email error for", user.email, e);
+      }
+    }
+  }
+
+  return sent;
 }
