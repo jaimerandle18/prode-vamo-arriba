@@ -1,8 +1,38 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
+const themes: Record<
+  string,
+  { title: string; emoji: string; subtitle: string; tagline: string }
+> = {
+  "vamo-arriba": {
+    title: "VAMO ARRIBA",
+    emoji: "🏆",
+    subtitle: "Prode Mundial 2026",
+    tagline: "Predecí · Competí · Demostrá que sabés",
+  },
+  "las-pibas": {
+    title: "LAS PIBAS",
+    emoji: "💅",
+    subtitle: "Prode Mundial 2026",
+    tagline: "Predecí · Competí · Rompela toda",
+  },
+};
+
+const defaultTheme = themes["vamo-arriba"];
+
 export default function LoginPage() {
+  const [theme, setTheme] = useState(defaultTheme);
+
+  useEffect(() => {
+    const league = localStorage.getItem("pending_league");
+    if (league && themes[league]) {
+      setTheme(themes[league]);
+    }
+  }, []);
+
   const handleGoogleLogin = async () => {
     const supabase = createClient();
     await supabase.auth.signInWithOAuth({
@@ -22,22 +52,25 @@ export default function LoginPage() {
 
       {/* Content */}
       <div className="relative z-10 flex flex-col items-center">
-        {/* Logo / Trophy */}
+        {/* Logo */}
         <div className="relative mb-8">
-          <div className="text-7xl sm:text-8xl animate-bounce" style={{ animationDuration: "3s" }}>
-            🏆
+          <div
+            className="text-7xl sm:text-8xl animate-bounce"
+            style={{ animationDuration: "3s" }}
+          >
+            {theme.emoji}
           </div>
           <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-16 h-3 bg-accent/20 rounded-full blur-sm" />
         </div>
 
         {/* Title */}
         <h1 className="text-4xl sm:text-5xl font-black tracking-tighter mb-1 bg-gradient-to-r from-foreground via-foreground to-accent bg-clip-text text-transparent">
-          VAMO ARRIBA
+          {theme.title}
         </h1>
         <div className="flex items-center gap-2 mb-6">
           <div className="h-px w-8 bg-gradient-to-r from-transparent to-accent/50" />
           <span className="text-xs sm:text-sm font-semibold tracking-[0.3em] text-accent uppercase">
-            Prode Mundial 2026
+            {theme.subtitle}
           </span>
           <div className="h-px w-8 bg-gradient-to-l from-transparent to-accent/50" />
         </div>
@@ -64,27 +97,41 @@ export default function LoginPage() {
         <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-10 w-full max-w-xs">
           <div className="bg-card/80 border border-card-border rounded-xl p-3 text-center backdrop-blur-sm">
             <p className="text-xl sm:text-2xl font-black text-accent">48</p>
-            <p className="text-[9px] sm:text-[10px] text-muted uppercase tracking-wider">Selecciones</p>
+            <p className="text-[9px] sm:text-[10px] text-muted uppercase tracking-wider">
+              Selecciones
+            </p>
           </div>
           <div className="bg-card/80 border border-card-border rounded-xl p-3 text-center backdrop-blur-sm">
             <p className="text-xl sm:text-2xl font-black text-accent">12</p>
-            <p className="text-[9px] sm:text-[10px] text-muted uppercase tracking-wider">Grupos</p>
+            <p className="text-[9px] sm:text-[10px] text-muted uppercase tracking-wider">
+              Grupos
+            </p>
           </div>
           <div className="bg-card/80 border border-card-border rounded-xl p-3 text-center backdrop-blur-sm">
             <p className="text-xl sm:text-2xl font-black text-accent">104</p>
-            <p className="text-[9px] sm:text-[10px] text-muted uppercase tracking-wider">Partidos</p>
+            <p className="text-[9px] sm:text-[10px] text-muted uppercase tracking-wider">
+              Partidos
+            </p>
           </div>
         </div>
 
         {/* Scoring info */}
         <div className="flex items-center gap-4 mb-8">
           <div className="flex items-center gap-1.5">
-            <span className="bg-gold/20 text-gold text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full">+1</span>
-            <span className="text-[10px] sm:text-xs text-muted">Acertar ganador</span>
+            <span className="bg-gold/20 text-gold text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full">
+              +1
+            </span>
+            <span className="text-[10px] sm:text-xs text-muted">
+              Acertar ganador
+            </span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="bg-accent/20 text-accent text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full">+3</span>
-            <span className="text-[10px] sm:text-xs text-muted">Resultado exacto</span>
+            <span className="bg-accent/20 text-accent text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full">
+              +3
+            </span>
+            <span className="text-[10px] sm:text-xs text-muted">
+              Resultado exacto
+            </span>
           </div>
         </div>
 
@@ -119,13 +166,15 @@ export default function LoginPage() {
             stroke="currentColor"
             strokeWidth={2}
           >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M9 5l7 7-7 7"
+            />
           </svg>
         </button>
 
-        <p className="text-[10px] text-muted/50 mt-6">
-          Predecí · Competí · Demostrá que sabés
-        </p>
+        <p className="text-[10px] text-muted/50 mt-6">{theme.tagline}</p>
       </div>
     </div>
   );
