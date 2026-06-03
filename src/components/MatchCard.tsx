@@ -207,6 +207,13 @@ export default function MatchCard({
         </div>
       </div>
 
+      {/* Locked message */}
+      {locked && !isFinished && !isLive && !prediction && (
+        <p className="text-[10px] sm:text-xs text-muted/70 mt-2 text-center italic">
+          Ya arrancó este partido, no se puede votar
+        </p>
+      )}
+
       {/* Actions */}
       <div className="flex items-center justify-between mt-2 sm:mt-3">
         <div>{pointsBadge()}</div>
