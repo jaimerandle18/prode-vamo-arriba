@@ -1,0 +1,229 @@
+"use client";
+
+import { useState } from "react";
+import { Match, Prediction, Team } from "@/lib/types";
+import { createClient } from "@/lib/supabase/client";
+
+interface MatchCardProps {
+  match: Match;
+  homeTeam: Team;
+  awayTeam: Team;
+  prediction?: Prediction;
+  userId: string;
+  locked: boolean;
+}
+
+export default function MatchCard({
+  match,
+  homeTeam,
+  awayTeam,
+  prediction,
+  userId,
+  locked,
+}: MatchCardProps) {
+  const [homeScore, setHomeScore] = useState<string>(
+    prediction?.home_score?.toString() ?? ""
+  );
+  const [awayScore, setAwayScore] = useState<string>(
+    prediction?.away_score?.toString() ?? ""
+  );
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(!!prediction);
+
+  const matchDate = new Date(match.match_date);
+  const isFinished = match.status === "finished";
+  const isLive = match.status === "live";
+
+  const handleSave = async () => {
+    if (homeScore === "" || awayScore === "") return;
+    setSaving(true);
+
+    const supabase = createClient();
+    const data = {
+      user_id: userId,
+      match_id: match.id,
+      home_score: parseInt(homeScore),
+      away_score: parseInt(awayScore),
+      updated_at: new Date().toISOString(),
+    };
+
+    if (prediction) {
+      await supabase
+        .from("predictions")
+        .update(data)
+        .eq("id", prediction.id);
+    } else {
+      await supabase.from("predictions").insert(data);
+    }
+
+    setSaving(false);
+    setSaved(true);
+  };
+
+  const pointsBadge = () => {
+    if (prediction?.points === null || prediction?.points === undefined)
+      return null;
+    const pts = prediction.points;
+    if (pts === 3)
+      return (
+        <span className="bg-accent/20 text-accent text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full">
+          +3 EXACTO
+        </span>
+      );
+    if (pts === 1)
+      return (
+        <span className="bg-gold/20 text-gold text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full">
+          +1 GANADOR
+        </span>
+      );
+    return (
+      <span className="bg-red-500/20 text-red-400 text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full">
+        +0
+      </span>
+    );
+  };
+
+  return (
+    <div
+      className={`bg-card border rounded-xl p-3 sm:p-4 ${isLive ? "border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.15)]" : "border-card-border"}`}
+    >
+      {/* Match info */}
+      <div className="flex items-center justify-between mb-2 sm:mb-3">
+        <span className="text-[10px] sm:text-xs text-muted truncate mr-2">
+          {match.group_id
+            ? `Grupo ${match.group_id}`
+            : match.phase === "round_of_32"
+              ? "16avos de final"
+              : match.phase === "round_of_16"
+                ? "8vos de final"
+                : match.phase === "quarter"
+                  ? "Cuartos de final"
+                  : match.phase === "semi"
+                    ? "Semifinal"
+                    : match.phase === "third_place"
+                      ? "Tercer puesto"
+                      : match.phase === "final"
+                        ? "FINAL"
+                        : match.phase}{" "}
+          · {match.city}
+        </span>
+        {isLive ? (
+          <span className="flex items-center gap-1.5 text-[10px] sm:text-xs font-bold text-red-400 shrink-0">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+            </span>
+            EN VIVO
+          </span>
+        ) : (
+          <span className="text-[10px] sm:text-xs text-muted shrink-0">
+            {matchDate.toLocaleDateString("es-AR", {
+              day: "numeric",
+              month: "short",
+            })}{" "}
+            {matchDate.toLocaleTimeString("es-AR", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </span>
+        )}
+      </div>
+
+      {/* Teams and scores */}
+      <div className="flex items-center gap-2 sm:gap-3">
+        {/* Home team */}
+        <div className="flex-1 text-right min-w-0">
+          <span className="text-xs sm:text-sm font-medium">
+            <span className="hidden sm:inline">{homeTeam.flag_emoji} </span>
+            <span className="truncate">{homeTeam.name}</span>
+            <span className="sm:hidden"> {homeTeam.flag_emoji}</span>
+          </span>
+        </div>
+
+        {/* Score inputs or results */}
+        <div className="flex items-center gap-1 shrink-0">
+          {isFinished || isLive ? (
+            <>
+              <span
+                className={`w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center font-bold text-base sm:text-lg rounded-lg ${isLive ? "bg-red-500/20 text-red-400" : "bg-accent/20 text-accent"}`}
+              >
+                {match.home_score ?? 0}
+              </span>
+              <span className="text-muted text-[10px]">-</span>
+              <span
+                className={`w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center font-bold text-base sm:text-lg rounded-lg ${isLive ? "bg-red-500/20 text-red-400" : "bg-accent/20 text-accent"}`}
+              >
+                {match.away_score ?? 0}
+              </span>
+            </>
+          ) : locked ? (
+            <>
+              <span className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-card-border font-bold text-base sm:text-lg rounded-lg">
+                {prediction ? prediction.home_score : "-"}
+              </span>
+              <span className="text-muted text-[10px]">-</span>
+              <span className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-card-border font-bold text-base sm:text-lg rounded-lg">
+                {prediction ? prediction.away_score : "-"}
+              </span>
+            </>
+          ) : (
+            <>
+              <input
+                type="number"
+                min="0"
+                max="20"
+                value={homeScore}
+                onChange={(e) => {
+                  setHomeScore(e.target.value);
+                  setSaved(false);
+                }}
+                className="w-9 h-9 sm:w-10 sm:h-10 text-center bg-background border border-card-border rounded-lg font-bold text-base sm:text-lg focus:border-accent focus:outline-none"
+                placeholder="-"
+              />
+              <span className="text-muted text-[10px]">-</span>
+              <input
+                type="number"
+                min="0"
+                max="20"
+                value={awayScore}
+                onChange={(e) => {
+                  setAwayScore(e.target.value);
+                  setSaved(false);
+                }}
+                className="w-9 h-9 sm:w-10 sm:h-10 text-center bg-background border border-card-border rounded-lg font-bold text-base sm:text-lg focus:border-accent focus:outline-none"
+                placeholder="-"
+              />
+            </>
+          )}
+        </div>
+
+        {/* Away team */}
+        <div className="flex-1 min-w-0">
+          <span className="text-xs sm:text-sm font-medium">
+            <span className="sm:hidden">{awayTeam.flag_emoji} </span>
+            <span className="truncate">{awayTeam.name}</span>
+            <span className="hidden sm:inline"> {awayTeam.flag_emoji}</span>
+          </span>
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center justify-between mt-2 sm:mt-3">
+        <div>{pointsBadge()}</div>
+        {!locked && !isFinished && (
+          <button
+            onClick={handleSave}
+            disabled={saving || saved || homeScore === "" || awayScore === ""}
+            className={`text-[10px] sm:text-xs font-medium px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg transition-colors cursor-pointer ${
+              saved
+                ? "bg-accent/20 text-accent"
+                : "bg-accent text-background hover:bg-accent-hover"
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
+          >
+            {saving ? "Guardando..." : saved ? "Guardado ✓" : "Guardar"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
