@@ -37,15 +37,6 @@ const phaseOrder = [
   "final",
 ];
 
-// Determinar la jornada de un partido de grupos por su fecha
-function getGroupMatchday(matchDate: Date): number {
-  const day = matchDate.getUTCDate();
-  const month = matchDate.getUTCMonth(); // 5 = junio
-  if (month === 5 && day <= 16) return 1;
-  if (month === 5 && day <= 22) return 2;
-  return 3;
-}
-
 interface RoundSection {
   key: string;
   label: string;
@@ -53,29 +44,39 @@ interface RoundSection {
   matches: Match[];
 }
 
-function groupMatchesByRound(matches: Match[]): RoundSection[] {
-  const sections = new Map<string, RoundSection>();
+function getRoundInfo(match: Match): { key: string; label: string; emoji: string } {
+  if (match.phase === "group" && match.round) {
+    const num = match.round.match(/(\d+)$/)?.[1] || "1";
+    return {
+      key: `group_${num}`,
+      label: `Fecha ${num} - Fase de grupos`,
+      emoji: num === "1" ? "1️⃣" : num === "2" ? "2️⃣" : "3️⃣",
+    };
+  }
 
-  for (const match of matches) {
-    let key: string;
-    let label: string;
-    let emoji: string;
-
-    if (match.phase === "group") {
-      const matchday = getGroupMatchday(new Date(match.match_date));
-      key = `group_${matchday}`;
-      label = `Fecha ${matchday} - Fase de grupos`;
-      emoji = matchday === 1 ? "1️⃣" : matchday === 2 ? "2️⃣" : "3️⃣";
-    } else {
-      key = match.phase;
-      label = phaseLabels[match.phase] ?? match.phase;
-      emoji =
+  if (match.phase !== "group") {
+    return {
+      key: match.phase,
+      label: phaseLabels[match.phase] ?? match.phase,
+      emoji:
         match.phase === "final"
           ? "🏆"
           : match.phase === "semi"
             ? "🔥"
-            : "⚔️";
-    }
+            : match.phase === "third_place"
+              ? "🥉"
+              : "⚔️",
+    };
+  }
+
+  return { key: "group_1", label: "Fecha 1 - Fase de grupos", emoji: "1️⃣" };
+}
+
+function groupMatchesByRound(matches: Match[]): RoundSection[] {
+  const sections = new Map<string, RoundSection>();
+
+  for (const match of matches) {
+    const { key, label, emoji } = getRoundInfo(match);
 
     if (!sections.has(key)) {
       sections.set(key, { key, label, emoji, matches: [] });
