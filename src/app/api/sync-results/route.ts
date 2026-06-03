@@ -413,26 +413,45 @@ async function sendReminders(): Promise<number> {
           from: "Prode Mundial 2026 <onboarding@resend.dev>",
           to: user.email,
           subject: `⚽ ${homeTeam.name} vs ${awayTeam.name} arranca en 10 minutos!`,
-          html: `
-            <div style="font-family: sans-serif; max-width: 400px; margin: 0 auto; padding: 20px;">
-              <h2 style="text-align: center;">⚽ Prode Mundial 2026</h2>
-              <p style="text-align: center; font-size: 18px; font-weight: bold;">
-                ${matchName}
-              </p>
-              <p style="text-align: center; color: #e74c3c; font-weight: bold;">
-                Arranca en 10 minutos!
-              </p>
-              <p style="text-align: center;">
-                Loco no te olvides de cargar tu pronóstico antes de que arranque!
-              </p>
-              <div style="text-align: center; margin-top: 20px;">
-                <a href="https://prode-vamo-arriba.vercel.app"
-                   style="background: #22c55e; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">
-                  Cargar pronóstico
-                </a>
-              </div>
-            </div>
-          `,
+          html: `<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#0a0f1a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <div style="max-width:480px;margin:0 auto;padding:40px 20px;">
+    <div style="text-align:center;margin-bottom:32px;">
+      <div style="font-size:48px;margin-bottom:8px;">⚽</div>
+      <h1 style="color:#e2e8f0;font-size:24px;font-weight:800;letter-spacing:-0.5px;margin:0;">PRODE MUNDIAL 2026</h1>
+      <div style="width:60px;height:2px;background:linear-gradient(90deg,transparent,#22c55e,transparent);margin:12px auto;"></div>
+    </div>
+    <div style="background:#111827;border:1px solid #1e293b;border-radius:16px;padding:24px;margin-bottom:24px;">
+      <p style="text-align:center;color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:2px;margin:0 0 16px;">Próximo partido</p>
+      <div style="text-align:center;margin-bottom:16px;">
+        <span style="font-size:28px;">${homeTeam.flag_emoji}</span>
+        <span style="color:#e2e8f0;font-size:20px;font-weight:700;margin:0 12px;">${homeTeam.name}</span>
+      </div>
+      <div style="text-align:center;color:#64748b;font-size:14px;font-weight:600;margin-bottom:16px;">VS</div>
+      <div style="text-align:center;margin-bottom:20px;">
+        <span style="font-size:28px;">${awayTeam.flag_emoji}</span>
+        <span style="color:#e2e8f0;font-size:20px;font-weight:700;margin:0 12px;">${awayTeam.name}</span>
+      </div>
+      <div style="background:linear-gradient(135deg,#dc2626,#b91c1c);border-radius:12px;padding:14px;text-align:center;">
+        <span style="color:white;font-size:16px;font-weight:700;">⏱ Arranca en 10 minutos!</span>
+      </div>
+    </div>
+    <div style="background:#111827;border:1px solid #1e293b;border-radius:16px;padding:20px;margin-bottom:24px;text-align:center;">
+      <p style="color:#facc15;font-size:20px;margin:0 0 8px;">🚨</p>
+      <p style="color:#e2e8f0;font-size:16px;font-weight:600;margin:0 0 4px;">Loco, no cargaste tu pronóstico!</p>
+      <p style="color:#64748b;font-size:13px;margin:0;">Si no lo cargás antes del pitazo, perdés la chance de sumar puntos</p>
+    </div>
+    <div style="text-align:center;margin-bottom:32px;">
+      <a href="https://prode-vamo-arriba.vercel.app" style="display:inline-block;background:linear-gradient(135deg,#22c55e,#16a34a);color:white;padding:16px 40px;border-radius:12px;text-decoration:none;font-size:16px;font-weight:700;box-shadow:0 4px 15px rgba(34,197,94,0.3);">Cargar pronóstico ahora</a>
+    </div>
+    <div style="text-align:center;margin-bottom:24px;">
+      <span style="display:inline-block;background:rgba(250,204,21,0.15);color:#facc15;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;margin:0 4px;">+1 ganador</span>
+      <span style="display:inline-block;background:rgba(34,197,94,0.15);color:#22c55e;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;margin:0 4px;">+3 exacto</span>
+    </div>
+    <p style="text-align:center;color:#334155;font-size:11px;margin:0;">Prode Mundial 2026</p>
+  </div>
+</body></html>`,
         });
         sent++;
       } catch (e) {
