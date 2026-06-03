@@ -5,6 +5,7 @@ import { Match, Prediction, Team, Profile } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 import MatchCard from "./MatchCard";
 import Leaderboard from "./Leaderboard";
+import OthersPredictions from "./OthersPredictions";
 
 interface MainTabsProps {
   matches: Match[];
@@ -14,7 +15,7 @@ interface MainTabsProps {
   userId: string;
 }
 
-type Tab = "leaderboard" | "predictions" | "results";
+type Tab = "leaderboard" | "predictions" | "results" | "resto";
 
 const phaseLabels: Record<string, string> = {
   round_of_32: "16avos de final",
@@ -242,6 +243,7 @@ export default function MainTabs({
   const tabs: { id: Tab; label: string; icon: string }[] = [
     { id: "leaderboard", label: "Posiciones", icon: "🏆" },
     { id: "predictions", label: "Pronósticos", icon: "🎯" },
+    { id: "resto", label: "Resto", icon: "👀" },
     { id: "results", label: "Resultados", icon: "⚽" },
   ];
 
@@ -280,6 +282,13 @@ export default function MainTabs({
       {/* Tab content */}
       {tab === "leaderboard" ? (
         <Leaderboard profiles={profiles} />
+      ) : tab === "resto" ? (
+        <OthersPredictions
+          matches={matches}
+          teams={teams}
+          profiles={profiles}
+          userId={userId}
+        />
       ) : (
         <div className="space-y-2">
           {tab === "results" && relevantMatches.length === 0 ? (
