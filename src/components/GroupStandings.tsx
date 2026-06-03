@@ -175,7 +175,7 @@ export default function GroupStandings({
 
               <div className="flex items-center gap-2">
                 {/* Mini flags preview */}
-                <div className="flex -space-x-1">
+                <div className="flex gap-1">
                   {standings.slice(0, 4).map((s) => (
                     <span key={s.team.id} className="text-sm">
                       {s.team.flag_emoji}
@@ -226,7 +226,7 @@ export default function GroupStandings({
                         idx < standings.length - 1
                           ? "border-b border-card-border/50"
                           : ""
-                      } ${qualifies ? "bg-accent/5" : thirdPlace ? "bg-gold/5" : ""}`}
+                      }`}
                     >
                       <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
                         <span className="text-[10px] sm:text-xs text-muted w-3 text-center shrink-0">
