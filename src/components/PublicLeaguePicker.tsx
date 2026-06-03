@@ -55,12 +55,27 @@ export default function PublicLeaguePicker({
           return;
         }
 
+        const isNew = !existing || existing.length === 0;
+
         await supabase
           .from("league_members")
           .upsert(
             { user_id: user.id, league_id: leagueId },
             { onConflict: "user_id,league_id" }
           );
+
+        // Send welcome email on first join
+        if (isNew && user.email) {
+          fetch("/api/welcome-email", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email: user.email,
+              name: user.user_metadata?.full_name || user.user_metadata?.name,
+            }),
+          }).catch(() => {});
+        }
+
         router.push(`/liga/${leagueId}`);
       }
     } else {
