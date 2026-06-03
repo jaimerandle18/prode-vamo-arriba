@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { Resend } from "resend";
+import { sendEmail } from "@/lib/mail";
+import { getReminderHtml } from "@/lib/email-templates";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -354,15 +355,10 @@ export async function GET(request: Request) {
 }
 
 // ============================================
-// REMINDERS: mail 10 min antes del partido
+// REMINDERS: mail 10 min antes del partido (Gmail)
 // ============================================
 
-const resend = process.env.RESEND_API_KEY
-  ? new Resend(process.env.RESEND_API_KEY)
-  : null;
-
 async function sendReminders(): Promise<number> {
-  if (!resend) return 0;
 
   const now = new Date();
   const in9min = new Date(now.getTime() + 9 * 60 * 1000);
@@ -393,8 +389,6 @@ async function sendReminders(): Promise<number> {
     const awayTeam = match.away_team as unknown as { name: string; flag_emoji: string };
     if (!homeTeam || !awayTeam) continue;
 
-    const matchName = `${homeTeam.flag_emoji} ${homeTeam.name} vs ${awayTeam.name} ${awayTeam.flag_emoji}`;
-
     // Get users who already predicted this match
     const { data: predictions } = await supabase
       .from("predictions")
@@ -409,49 +403,10 @@ async function sendReminders(): Promise<number> {
       if (!user.email) continue;
 
       try {
-        await resend.emails.send({
-          from: "Prode Mundial 2026 <onboarding@resend.dev>",
+        await sendEmail({
           to: user.email,
           subject: `⚽ ${homeTeam.name} vs ${awayTeam.name} arranca en 10 minutos!`,
-          html: `<!DOCTYPE html>
-<html><head><meta charset="utf-8"></head>
-<body style="margin:0;padding:0;background:#0a0f1a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-  <div style="max-width:480px;margin:0 auto;padding:40px 20px;">
-    <div style="text-align:center;margin-bottom:32px;">
-      <div style="font-size:48px;margin-bottom:8px;">⚽</div>
-      <h1 style="color:#e2e8f0;font-size:24px;font-weight:800;letter-spacing:-0.5px;margin:0;">PRODE MUNDIAL 2026</h1>
-      <div style="width:60px;height:2px;background:linear-gradient(90deg,transparent,#22c55e,transparent);margin:12px auto;"></div>
-    </div>
-    <div style="background:#111827;border:1px solid #1e293b;border-radius:16px;padding:24px;margin-bottom:24px;">
-      <p style="text-align:center;color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:2px;margin:0 0 16px;">Próximo partido</p>
-      <div style="text-align:center;margin-bottom:16px;">
-        <span style="font-size:28px;">${homeTeam.flag_emoji}</span>
-        <span style="color:#e2e8f0;font-size:20px;font-weight:700;margin:0 12px;">${homeTeam.name}</span>
-      </div>
-      <div style="text-align:center;color:#64748b;font-size:14px;font-weight:600;margin-bottom:16px;">VS</div>
-      <div style="text-align:center;margin-bottom:20px;">
-        <span style="font-size:28px;">${awayTeam.flag_emoji}</span>
-        <span style="color:#e2e8f0;font-size:20px;font-weight:700;margin:0 12px;">${awayTeam.name}</span>
-      </div>
-      <div style="background:linear-gradient(135deg,#dc2626,#b91c1c);border-radius:12px;padding:14px;text-align:center;">
-        <span style="color:white;font-size:16px;font-weight:700;">⏱ Arranca en 10 minutos!</span>
-      </div>
-    </div>
-    <div style="background:#111827;border:1px solid #1e293b;border-radius:16px;padding:20px;margin-bottom:24px;text-align:center;">
-      <p style="color:#facc15;font-size:20px;margin:0 0 8px;">🚨</p>
-      <p style="color:#e2e8f0;font-size:16px;font-weight:600;margin:0 0 4px;">Loco, no cargaste tu pronóstico!</p>
-      <p style="color:#64748b;font-size:13px;margin:0;">Si no lo cargás antes del pitazo, perdés la chance de sumar puntos</p>
-    </div>
-    <div style="text-align:center;margin-bottom:32px;">
-      <a href="https://prode-vamo-arriba.vercel.app" style="display:inline-block;background:linear-gradient(135deg,#22c55e,#16a34a);color:white;padding:16px 40px;border-radius:12px;text-decoration:none;font-size:16px;font-weight:700;box-shadow:0 4px 15px rgba(34,197,94,0.3);">Cargar pronóstico ahora</a>
-    </div>
-    <div style="text-align:center;margin-bottom:24px;">
-      <span style="display:inline-block;background:rgba(250,204,21,0.15);color:#facc15;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;margin:0 4px;">+1 ganador</span>
-      <span style="display:inline-block;background:rgba(34,197,94,0.15);color:#22c55e;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;margin:0 4px;">+3 exacto</span>
-    </div>
-    <p style="text-align:center;color:#334155;font-size:11px;margin:0;">Prode Mundial 2026</p>
-  </div>
-</body></html>`,
+          html: getReminderHtml(homeTeam, awayTeam),
         });
         sent++;
       } catch (e) {
