@@ -19,6 +19,7 @@ export default function PublicLeaguePicker({
   const hasPending = isLoggedIn && typeof window !== "undefined" && !!localStorage.getItem("pending_league");
   const [loading, setLoading] = useState<string | null>(null);
   const [redirecting, setRedirecting] = useState(hasPending);
+  const [blocked, setBlocked] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -38,6 +39,22 @@ export default function PublicLeaguePicker({
         data: { user },
       } = await supabase.auth.getUser();
       if (user) {
+        // Check if already in another league
+        const { data: existing } = await supabase
+          .from("league_members")
+          .select("league_id")
+          .eq("user_id", user.id);
+
+        const otherLeague = existing?.find((m) => m.league_id !== leagueId);
+        if (otherLeague) {
+          // Already in another league
+          const leagueName = leagues.find((l) => l.id === otherLeague.league_id)?.name ?? otherLeague.league_id;
+          setBlocked(leagueName);
+          setLoading(null);
+          setRedirecting(false);
+          return;
+        }
+
         await supabase
           .from("league_members")
           .upsert(
@@ -51,6 +68,32 @@ export default function PublicLeaguePicker({
       router.push("/login");
     }
   };
+
+  if (blocked) {
+    return (
+      <div className="relative flex flex-col items-center justify-center min-h-screen px-4 overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-accent/10 via-background to-background" />
+        <div className="relative z-10 flex flex-col items-center text-center">
+          <div className="text-5xl sm:text-6xl mb-6">🚫</div>
+          <h2 className="text-xl sm:text-2xl font-bold mb-2">
+            Ya estás en {blocked}
+          </h2>
+          <p className="text-sm text-muted mb-6">
+            No podés estar en dos prodes a la vez
+          </p>
+          <button
+            onClick={() => {
+              setBlocked(null);
+              setLoading(null);
+            }}
+            className="text-sm text-accent hover:underline cursor-pointer"
+          >
+            Volver
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (redirecting) {
     return (
