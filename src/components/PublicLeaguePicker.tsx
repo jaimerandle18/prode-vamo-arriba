@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { League } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -15,6 +15,7 @@ export default function PublicLeaguePicker({
   isLoggedIn,
 }: PublicLeaguePickerProps) {
   const router = useRouter();
+  const [loading, setLoading] = useState<string | null>(null);
 
   // After login, check if there's a pending league to join
   useEffect(() => {
@@ -27,8 +28,8 @@ export default function PublicLeaguePicker({
   }, [isLoggedIn]);
 
   const handleSelect = async (leagueId: string) => {
+    setLoading(leagueId);
     if (isLoggedIn) {
-      // Already logged in — join league and go
       const supabase = createClient();
       const {
         data: { user },
@@ -43,7 +44,6 @@ export default function PublicLeaguePicker({
         router.push(`/liga/${leagueId}`);
       }
     } else {
-      // Not logged in — save league choice and go to login
       localStorage.setItem("pending_league", leagueId);
       router.push("/login");
     }
@@ -76,31 +76,64 @@ export default function PublicLeaguePicker({
         <p className="text-sm text-muted mb-8">Elegí tu prode</p>
 
         <div className="flex flex-col gap-3 w-full">
-          {leagues.map((league) => (
-            <button
-              key={league.id}
-              onClick={() => handleSelect(league.id)}
-              className="group w-full flex items-center gap-4 bg-card border border-card-border rounded-xl px-5 py-5 hover:border-accent/50 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
-            >
-              <span className="text-3xl sm:text-4xl">{league.emoji}</span>
-              <span className="flex-1 text-left text-lg sm:text-xl font-bold">
-                {league.name}
-              </span>
-              <svg
-                className="w-5 h-5 text-muted group-hover:text-accent group-hover:translate-x-0.5 transition-all"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
+          {leagues.map((league) => {
+            const isLoading = loading === league.id;
+
+            return (
+              <button
+                key={league.id}
+                onClick={() => handleSelect(league.id)}
+                disabled={!!loading}
+                className={`group w-full flex items-center gap-4 bg-card border border-card-border rounded-xl px-5 py-5 transition-all cursor-pointer ${
+                  isLoading
+                    ? "border-accent/50 scale-[0.98]"
+                    : loading
+                      ? "opacity-40"
+                      : "hover:border-accent/50 hover:scale-[1.02] active:scale-[0.98]"
+                }`}
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M9 5l7 7-7-7"
-                />
-              </svg>
-            </button>
-          ))}
+                <span className="text-3xl sm:text-4xl">{league.emoji}</span>
+                <span className="flex-1 text-left text-lg sm:text-xl font-bold">
+                  {league.name}
+                </span>
+                {isLoading ? (
+                  <svg
+                    className="w-5 h-5 text-accent animate-spin"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
+                ) : (
+                  <svg
+                    className="w-5 h-5 text-muted group-hover:text-accent group-hover:translate-x-0.5 transition-all"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M9 5l7 7-7-7"
+                    />
+                  </svg>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         <p className="text-[10px] text-muted/50 mt-8">
