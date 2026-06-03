@@ -15,7 +15,7 @@ export default function Leaderboard({ profiles }: { profiles: Profile[] }) {
   return (
     <div className="bg-card border border-card-border rounded-xl p-3 sm:p-4">
       <div className="flex items-center justify-between mb-3 sm:mb-4">
-        <h2 className="text-base sm:text-lg font-bold">🏆 Tabla de posiciones</h2>
+        <h2 className="text-base sm:text-lg font-bold">🏆  Tabla de posiciones</h2>
         <span className="text-[10px] sm:text-xs text-muted">+1 ganador · +3 exacto</span>
       </div>
 

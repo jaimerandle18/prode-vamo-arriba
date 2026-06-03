@@ -32,6 +32,7 @@ export interface Match {
   away_score: number | null;
   status: string;
   round: string | null;
+  elapsed: number | null;
   home_team?: Team;
   away_team?: Team;
 }

@@ -15,7 +15,7 @@ interface ApiFixture {
   fixture: {
     id: number;
     date: string;
-    status: { short: string; long: string };
+    status: { short: string; long: string; elapsed: number | null };
     venue?: { name: string; city: string };
   };
   league: {
@@ -237,6 +237,7 @@ async function createKnockoutMatch(fixture: ApiFixture) {
           ? fixture.goals.away
           : null,
       status,
+      elapsed: fixture.fixture.status.elapsed,
     })
     .select("id")
     .single();
@@ -297,6 +298,7 @@ export async function GET(request: Request) {
                 home_score: fixture.goals.home,
                 away_score: fixture.goals.away,
                 status,
+                elapsed: fixture.fixture.status.elapsed,
               })
               .eq("id", match.id);
             updated++;

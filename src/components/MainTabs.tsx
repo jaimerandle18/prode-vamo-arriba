@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import MatchCard from "./MatchCard";
 import Leaderboard from "./Leaderboard";
 import OthersPredictions from "./OthersPredictions";
+import GroupStandings from "./GroupStandings";
 
 interface MainTabsProps {
   matches: Match[];
@@ -15,7 +16,7 @@ interface MainTabsProps {
   userId: string;
 }
 
-type Tab = "leaderboard" | "predictions" | "results" | "resto";
+type Tab = "leaderboard" | "predictions" | "resto" | "grupos";
 
 const phaseLabels: Record<string, string> = {
   round_of_32: "16avos de final",
@@ -136,12 +137,9 @@ export default function MainTabs({
 
   // Only auto-open if there's a live match
   useEffect(() => {
-    if (tab !== "predictions" && tab !== "results") return;
+    if (tab !== "predictions") return;
 
-    const relevantMatches =
-      tab === "results"
-        ? matches.filter((m) => m.status === "finished")
-        : matches;
+    const relevantMatches = matches;
 
     const sections = groupMatchesByRound(relevantMatches);
     const liveSection = sections.find((s) =>
@@ -234,9 +232,7 @@ export default function MainTabs({
   }, [userId]);
 
   const relevantMatches =
-    tab === "results"
-      ? matches.filter((m) => m.status === "finished")
-      : matches;
+    matches;
 
   const sections = groupMatchesByRound(relevantMatches);
 
@@ -244,7 +240,7 @@ export default function MainTabs({
     { id: "leaderboard", label: "Posiciones", icon: "🏆" },
     { id: "predictions", label: "Pronósticos", icon: "🎯" },
     { id: "resto", label: "Resto", icon: "👀" },
-    { id: "results", label: "Resultados", icon: "⚽" },
+    { id: "grupos", label: "Grupos", icon: "🏟️" },
   ];
 
   return (
@@ -282,6 +278,8 @@ export default function MainTabs({
       {/* Tab content */}
       {tab === "leaderboard" ? (
         <Leaderboard profiles={profiles} />
+      ) : tab === "grupos" ? (
+        <GroupStandings matches={matches} teams={teams} />
       ) : tab === "resto" ? (
         <OthersPredictions
           matches={matches}
@@ -291,17 +289,7 @@ export default function MainTabs({
         />
       ) : (
         <div className="space-y-2">
-          {tab === "results" && relevantMatches.length === 0 ? (
-            <div className="bg-card border border-card-border rounded-xl p-8 text-center">
-              <p className="text-2xl mb-2">⏳</p>
-              <p className="text-sm sm:text-base text-muted font-medium">
-                Todavía no se jugó ningún partido pibe, aguante la Scalonetaaaaa
-              </p>
-              <p className="text-xs sm:text-sm text-muted/70 mt-1">
-                Los resultados van a aparecer acá cuando arranque el mundial
-              </p>
-            </div>
-          ) : sections.length === 0 ? (
+          {sections.length === 0 ? (
             <p className="text-center text-muted py-8 text-sm">
               No hay partidos para mostrar
             </p>

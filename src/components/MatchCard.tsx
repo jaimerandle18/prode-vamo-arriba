@@ -85,7 +85,7 @@ export default function MatchCard({
 
   return (
     <div
-      className={`bg-card border rounded-xl p-3 sm:p-4 ${isLive ? "border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.15)]" : "border-card-border"}`}
+      className={`bg-card border rounded-xl p-3 sm:p-4 ${isLive ? "border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.15)]" : isFinished ? "border-foreground/30" : "border-card-border"}`}
     >
       {/* Match info */}
       <div className="flex items-center justify-between mb-2 sm:mb-3">
@@ -115,6 +115,10 @@ export default function MatchCard({
             </span>
             EN VIVO
           </span>
+        ) : isFinished ? (
+          <span className="text-[10px] sm:text-xs font-bold text-foreground/70 shrink-0">
+            FINALIZADO
+          </span>
         ) : (
           <span className="text-[10px] sm:text-xs text-muted shrink-0">
             {matchDate.toLocaleDateString("es-AR", {
@@ -130,34 +134,18 @@ export default function MatchCard({
       </div>
 
       {/* Teams and scores */}
-      <div className="flex items-center gap-2 sm:gap-3">
-        {/* Home team */}
-        <div className="flex-1 text-right min-w-0">
-          <span className="text-xs sm:text-sm font-medium">
-            <span className="hidden sm:inline">{homeTeam.flag_emoji} </span>
-            <span className="truncate">{homeTeam.name}</span>
-            <span className="sm:hidden"> {homeTeam.flag_emoji}</span>
-          </span>
-        </div>
-
-        {/* Score inputs or results */}
-        <div className="flex items-center gap-1 shrink-0">
-          {isFinished || isLive ? (
-            <>
-              <span
-                className={`w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center font-bold text-base sm:text-lg rounded-lg ${isLive ? "bg-red-500/20 text-red-400" : "bg-accent/20 text-accent"}`}
-              >
-                {match.home_score ?? 0}
+      {locked || isLive || isFinished ? (
+        <div>
+          {/* Prediction row: teams aligned with score */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex-1 text-right min-w-0">
+              <span className="text-xs sm:text-sm font-medium">
+                <span className="hidden sm:inline">{homeTeam.flag_emoji} </span>
+                <span className="truncate">{homeTeam.name}</span>
+                <span className="sm:hidden"> {homeTeam.flag_emoji}</span>
               </span>
-              <span className="text-muted text-[10px]">-</span>
-              <span
-                className={`w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center font-bold text-base sm:text-lg rounded-lg ${isLive ? "bg-red-500/20 text-red-400" : "bg-accent/20 text-accent"}`}
-              >
-                {match.away_score ?? 0}
-              </span>
-            </>
-          ) : locked ? (
-            <>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
               <span className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-card-border font-bold text-base sm:text-lg rounded-lg">
                 {prediction ? prediction.home_score : "-"}
               </span>
@@ -165,50 +153,76 @@ export default function MatchCard({
               <span className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-card-border font-bold text-base sm:text-lg rounded-lg">
                 {prediction ? prediction.away_score : "-"}
               </span>
-            </>
-          ) : (
-            <>
-              <input
-                type="number"
-                min="0"
-                max="20"
-                value={homeScore}
-                onChange={(e) => {
-                  setHomeScore(e.target.value);
-                  setSaved(false);
-                }}
-                className="w-9 h-9 sm:w-10 sm:h-10 text-center bg-background border border-card-border rounded-lg font-bold text-base sm:text-lg focus:border-accent focus:outline-none"
-                placeholder="-"
-              />
-              <span className="text-muted text-[10px]">-</span>
-              <input
-                type="number"
-                min="0"
-                max="20"
-                value={awayScore}
-                onChange={(e) => {
-                  setAwayScore(e.target.value);
-                  setSaved(false);
-                }}
-                className="w-9 h-9 sm:w-10 sm:h-10 text-center bg-background border border-card-border rounded-lg font-bold text-base sm:text-lg focus:border-accent focus:outline-none"
-                placeholder="-"
-              />
-            </>
-          )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="text-xs sm:text-sm font-medium">
+                <span className="sm:hidden">{awayTeam.flag_emoji} </span>
+                <span className="truncate">{awayTeam.name}</span>
+                <span className="hidden sm:inline"> {awayTeam.flag_emoji}</span>
+              </span>
+            </div>
+          </div>
+          {/* Live/final score below */}
+          {(isLive || isFinished) &&
+            match.home_score !== null &&
+            match.away_score !== null && (
+              <p
+                className={`text-center text-[10px] sm:text-xs font-bold mt-1.5 ${isLive ? "text-red-400" : "text-foreground/70"}`}
+              >
+                {isLive
+                  ? `⏱ ${match.elapsed ? match.elapsed + "'" : "En vivo"} — ${match.home_score} - ${match.away_score}`
+                  : `Finalizado ${match.home_score} - ${match.away_score}`}
+              </p>
+            )}
         </div>
-
-        {/* Away team */}
-        <div className="flex-1 min-w-0">
-          <span className="text-xs sm:text-sm font-medium">
-            <span className="sm:hidden">{awayTeam.flag_emoji} </span>
-            <span className="truncate">{awayTeam.name}</span>
-            <span className="hidden sm:inline"> {awayTeam.flag_emoji}</span>
-          </span>
+      ) : (
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex-1 text-right min-w-0">
+            <span className="text-xs sm:text-sm font-medium">
+              <span className="hidden sm:inline">{homeTeam.flag_emoji} </span>
+              <span className="truncate">{homeTeam.name}</span>
+              <span className="sm:hidden"> {homeTeam.flag_emoji}</span>
+            </span>
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            <input
+              type="number"
+              min="0"
+              max="20"
+              value={homeScore}
+              onChange={(e) => {
+                setHomeScore(e.target.value);
+                setSaved(false);
+              }}
+              className="w-9 h-9 sm:w-10 sm:h-10 text-center bg-background border border-card-border rounded-lg font-bold text-base sm:text-lg focus:border-accent focus:outline-none"
+              placeholder="-"
+            />
+            <span className="text-muted text-[10px]">-</span>
+            <input
+              type="number"
+              min="0"
+              max="20"
+              value={awayScore}
+              onChange={(e) => {
+                setAwayScore(e.target.value);
+                setSaved(false);
+              }}
+              className="w-9 h-9 sm:w-10 sm:h-10 text-center bg-background border border-card-border rounded-lg font-bold text-base sm:text-lg focus:border-accent focus:outline-none"
+              placeholder="-"
+            />
+          </div>
+          <div className="flex-1 min-w-0">
+            <span className="text-xs sm:text-sm font-medium">
+              <span className="sm:hidden">{awayTeam.flag_emoji} </span>
+              <span className="truncate">{awayTeam.name}</span>
+              <span className="hidden sm:inline"> {awayTeam.flag_emoji}</span>
+            </span>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Locked message */}
-      {locked && !isFinished && !isLive && !prediction && (
+      {(locked || isLive || isFinished) && !prediction && (
         <p className="text-[10px] sm:text-xs text-muted/70 mt-2 text-center italic">
           Ya arrancó este partido, no se puede votar
         </p>
@@ -217,7 +231,7 @@ export default function MatchCard({
       {/* Actions */}
       <div className="flex items-center justify-between mt-2 sm:mt-3">
         <div>{pointsBadge()}</div>
-        {!locked && !isFinished && (
+        {!locked && !isFinished && !isLive && (
           <button
             onClick={handleSave}
             disabled={saving || saved || homeScore === "" || awayScore === ""}
