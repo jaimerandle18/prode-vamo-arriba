@@ -15,10 +15,11 @@ export default function PublicLeaguePicker({
   isLoggedIn,
 }: PublicLeaguePickerProps) {
   const router = useRouter();
+  // Check immediately if we should redirect (before first render)
+  const hasPending = isLoggedIn && typeof window !== "undefined" && !!localStorage.getItem("pending_league");
   const [loading, setLoading] = useState<string | null>(null);
-  const [redirecting, setRedirecting] = useState(false);
+  const [redirecting, setRedirecting] = useState(hasPending);
 
-  // After login, check if there's a pending league to join
   useEffect(() => {
     if (!isLoggedIn) return;
     const pending = localStorage.getItem("pending_league");
