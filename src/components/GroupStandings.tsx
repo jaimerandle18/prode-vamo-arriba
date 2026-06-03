@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 interface GroupStandingsProps {
   matches: Match[];
   teams: Team[];
+  leagueId?: string;
 }
 
 interface TeamStanding {
@@ -90,6 +91,7 @@ function calculateStandings(
 export default function GroupStandings({
   matches: initialMatches,
   teams,
+  leagueId,
 }: GroupStandingsProps) {
   const [matches, setMatches] = useState(initialMatches);
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
@@ -135,7 +137,7 @@ export default function GroupStandings({
         <div className="bg-card border border-card-border rounded-xl p-8 text-center">
           <p className="text-2xl mb-2">⏳</p>
           <p className="text-sm sm:text-base text-muted font-medium">
-            Todavía no se jugó ningún partido pibe, aguante la Scalonetaaaaa
+            Todavía no se jugó ningún partido {leagueId === "las-pibas" ? "piba" : "pibe"}, aguante la Scalonetaaaaa
           </p>
           <p className="text-xs sm:text-sm text-muted/70 mt-1">
             Las tablas se van a ir actualizando a medida que se jueguen los

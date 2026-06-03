@@ -281,7 +281,7 @@ export default function MainTabs({
       {tab === "leaderboard" ? (
         <Leaderboard profiles={profiles} />
       ) : tab === "grupos" ? (
-        <GroupStandings matches={matches} teams={teams} />
+        <GroupStandings matches={matches} teams={teams} leagueId={leagueId} />
       ) : tab === "resto" ? (
         <OthersPredictions
           matches={matches}
@@ -363,9 +363,11 @@ export default function MainTabs({
                     <div className="mt-2 space-y-2 sm:space-y-3">
                       {section.matches.length === 0 ? (
                         <div className="bg-card border border-card-border rounded-xl p-6 text-center">
-                          <p className="text-base sm:text-lg mb-1">🤷</p>
+                          <p className="text-base sm:text-lg mb-1">
+                            {leagueId === "las-pibas" ? "💁‍♀️" : "🤷"}
+                          </p>
                           <p className="text-sm sm:text-base text-muted font-medium">
-                            A quién querés votar pibe?
+                            A quién querés votar {leagueId === "las-pibas" ? "piba" : "pibe"}?
                           </p>
                           <p className="text-xs sm:text-sm text-muted/70 mt-1">
                             Si todavía no sabemos quién va a jugarla
