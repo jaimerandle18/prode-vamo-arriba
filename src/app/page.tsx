@@ -1,7 +1,7 @@
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import LeaguePicker from "@/components/LeaguePicker";
-import { League, LeagueMember } from "@/lib/types";
+import { redirect } from "next/navigation";
+import { League } from "@/lib/types";
+import PublicLeaguePicker from "@/components/PublicLeaguePicker";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -10,31 +10,24 @@ export default async function Home() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    redirect("/login");
-  }
-
-  const [{ data: leagues }, { data: memberships }] = await Promise.all([
-    supabase.from("leagues").select("*").returns<League[]>(),
-    supabase
+  // If logged in and in one league, go directly there
+  if (user) {
+    const { data: memberships } = await supabase
       .from("league_members")
       .select("league_id")
-      .eq("user_id", user.id)
-      .returns<LeagueMember[]>(),
-  ]);
+      .eq("user_id", user.id);
 
-  const userLeagues = memberships?.map((m) => m.league_id) ?? [];
+    const leagues = memberships?.map((m) => m.league_id) ?? [];
 
-  // If user is only in one league, go directly there
-  if (userLeagues.length === 1) {
-    redirect(`/liga/${userLeagues[0]}`);
+    if (leagues.length === 1) {
+      redirect(`/liga/${leagues[0]}`);
+    }
   }
 
-  return (
-    <LeaguePicker
-      leagues={leagues ?? []}
-      userId={user.id}
-      userLeagues={userLeagues}
-    />
-  );
+  const { data: leagues } = await supabase
+    .from("leagues")
+    .select("*")
+    .returns<League[]>();
+
+  return <PublicLeaguePicker leagues={leagues ?? []} isLoggedIn={!!user} />;
 }
