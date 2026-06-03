@@ -1,10 +1,16 @@
 "use client";
 
-import { Profile } from "@/lib/types";
+import { Profile, League } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
-export default function Header({ user }: { user: Profile | null }) {
+export default function Header({
+  user,
+  league,
+}: {
+  user: Profile | null;
+  league?: League;
+}) {
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -16,13 +22,22 @@ export default function Header({ user }: { user: Profile | null }) {
   return (
     <header className="border-b border-card-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
       <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between gap-2">
-        <div className="min-w-0">
-          <h1 className="text-base sm:text-xl font-bold tracking-tight truncate">
-            ⚽ PRODE VAMO ARRIBA
-          </h1>
-          <p className="text-[10px] sm:text-xs text-muted truncate">
-            Mundial 2026
-          </p>
+        <div className="min-w-0 flex items-center gap-2">
+          <a
+            href="/"
+            className="text-base sm:text-lg hover:opacity-70 transition-opacity"
+            title="Cambiar de liga"
+          >
+            ⚽
+          </a>
+          <div>
+            <h1 className="text-base sm:text-xl font-bold tracking-tight truncate">
+              {league ? `PRODE ${league.name.toUpperCase()}` : "PRODE MUNDIAL 2026"}
+            </h1>
+            <p className="text-[10px] sm:text-xs text-muted truncate">
+              Mundial 2026
+            </p>
+          </div>
         </div>
         {user && (
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">

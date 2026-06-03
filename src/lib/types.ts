@@ -47,3 +47,16 @@ export interface Prediction {
   created_at: string;
   updated_at: string;
 }
+
+export interface League {
+  id: string;
+  name: string;
+  emoji: string | null;
+}
+
+export interface LeagueMember {
+  id: number;
+  user_id: string;
+  league_id: string;
+  joined_at: string;
+}

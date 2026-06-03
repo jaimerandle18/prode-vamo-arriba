@@ -14,6 +14,7 @@ interface MainTabsProps {
   predictions: Prediction[];
   profiles: Profile[];
   userId: string;
+  leagueId?: string;
 }
 
 type Tab = "leaderboard" | "predictions" | "resto" | "grupos";
@@ -122,6 +123,7 @@ export default function MainTabs({
   predictions: initialPredictions,
   profiles: initialProfiles,
   userId,
+  leagueId,
 }: MainTabsProps) {
   const [tab, setTab] = useState<Tab>("leaderboard");
   const [openSections, setOpenSections] = useState<Set<string>>(new Set());

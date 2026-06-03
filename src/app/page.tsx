@@ -1,8 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import Header from "@/components/Header";
-import MainTabs from "@/components/MainTabs";
-import { Profile, Team, Match, Prediction } from "@/lib/types";
+import LeaguePicker from "@/components/LeaguePicker";
+import { League, LeagueMember } from "@/lib/types";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -15,51 +14,27 @@ export default async function Home() {
     redirect("/login");
   }
 
-  const [
-    { data: profile },
-    { data: profiles },
-    { data: teams },
-    { data: matches },
-    { data: predictions },
-  ] = await Promise.all([
+  const [{ data: leagues }, { data: memberships }] = await Promise.all([
+    supabase.from("leagues").select("*").returns<League[]>(),
     supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .single<Profile>(),
-    supabase
-      .from("profiles")
-      .select("*")
-      .order("total_points", { ascending: false })
-      .returns<Profile[]>(),
-    supabase.from("teams").select("*").returns<Team[]>(),
-    supabase
-      .from("matches")
-      .select("*")
-      .order("match_date", { ascending: true })
-      .returns<Match[]>(),
-    supabase
-      .from("predictions")
-      .select("*")
+      .from("league_members")
+      .select("league_id")
       .eq("user_id", user.id)
-      .returns<Prediction[]>(),
+      .returns<LeagueMember[]>(),
   ]);
 
+  const userLeagues = memberships?.map((m) => m.league_id) ?? [];
+
+  // If user is only in one league, go directly there
+  if (userLeagues.length === 1) {
+    redirect(`/liga/${userLeagues[0]}`);
+  }
+
   return (
-    <>
-      <Header user={profile ?? null} />
-      <main className="max-w-lg sm:max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-6 flex-1 w-full">
-        <MainTabs
-          matches={matches ?? []}
-          teams={teams ?? []}
-          predictions={predictions ?? []}
-          profiles={profiles ?? []}
-          userId={user.id}
-        />
-        <footer className="text-center text-[10px] sm:text-xs text-muted mt-6 sm:mt-8 pb-4">
-          Los partidos se irán cargando a medida que se jueguen
-        </footer>
-      </main>
-    </>
+    <LeaguePicker
+      leagues={leagues ?? []}
+      userId={user.id}
+      userLeagues={userLeagues}
+    />
   );
 }
