@@ -131,9 +131,13 @@ export default function MainTabs({
   const [matches, setMatches] = useState(initialMatches);
   const [predictions, setPredictions] = useState(initialPredictions);
   const [profiles, setProfiles] = useState(initialProfiles);
-  const [celebratingGoal, setCelebratingGoal] = useState(false);
+  const [celebratingGoal, setCelebratingGoal] = useState<{
+    teamName: string;
+    flagEmoji?: string;
+    scoreline?: string;
+  } | null>(null);
   const lastGoalRef = useRef<string | null>(null);
-  const endGoalCelebration = useCallback(() => setCelebratingGoal(false), []);
+  const endGoalCelebration = useCallback(() => setCelebratingGoal(null), []);
 
   const teamsMap = new Map(teams.map((t) => [t.id, t]));
   const predictionsMap = new Map(predictions.map((p) => [p.match_id, p]));
@@ -184,15 +188,31 @@ export default function MainTabs({
           const updated = payload.new as Match;
           setMatches((prev) => {
             const old = prev.find((m) => m.id === updated.id);
-            const isGoal =
-              old &&
-              ((updated.home_score ?? 0) > (old.home_score ?? 0) ||
-                (updated.away_score ?? 0) > (old.away_score ?? 0));
-            if (isGoal) {
+            const homeScored =
+              old && (updated.home_score ?? 0) > (old.home_score ?? 0);
+            const awayScored =
+              old && (updated.away_score ?? 0) > (old.away_score ?? 0);
+            if (homeScored || awayScored) {
               const goalKey = `${updated.id}-${updated.home_score}-${updated.away_score}`;
               if (lastGoalRef.current !== goalKey) {
                 lastGoalRef.current = goalKey;
-                setTimeout(() => setCelebratingGoal(true), 0);
+                const scorer = teamsMap.get(
+                  homeScored ? updated.home_team_id : updated.away_team_id
+                );
+                const home = teamsMap.get(updated.home_team_id);
+                const away = teamsMap.get(updated.away_team_id);
+                setTimeout(
+                  () =>
+                    setCelebratingGoal({
+                      teamName: scorer?.name ?? "tu equipo",
+                      flagEmoji: scorer?.flag_emoji ?? undefined,
+                      scoreline:
+                        home && away
+                          ? `${home.name} ${updated.home_score} - ${updated.away_score} ${away.name}`
+                          : undefined,
+                    }),
+                  0
+                );
               }
             }
             return prev.map((m) =>
@@ -265,7 +285,9 @@ export default function MainTabs({
 
   return (
     <div>
-      {celebratingGoal && <GoalCelebration onDone={endGoalCelebration} />}
+      {celebratingGoal && (
+        <GoalCelebration {...celebratingGoal} onDone={endGoalCelebration} />
+      )}
 
       {/* Live indicator */}
       {hasLiveMatches && (
