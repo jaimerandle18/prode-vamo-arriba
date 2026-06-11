@@ -17,7 +17,12 @@ interface ApiFixture {
   fixture: {
     id: number;
     date: string;
-    status: { short: string; long: string; elapsed: number | null };
+    status: {
+      short: string;
+      long: string;
+      elapsed: number | null;
+      extra: number | null;
+    };
     venue?: { name: string; city: string };
   };
   league: {
@@ -158,7 +163,7 @@ async function findMatchingMatch(fixture: ApiFixture) {
   const { data: matches } = await supabase
     .from("matches")
     .select(
-      `id, match_date, home_score, away_score, status, elapsed,
+      `id, match_date, home_score, away_score, status, elapsed, extra,
       home_team:teams!matches_home_team_id_fkey(id, name, code),
       away_team:teams!matches_away_team_id_fkey(id, name, code)`
     )
@@ -224,6 +229,7 @@ async function createKnockoutMatch(fixture: ApiFixture) {
           : null,
       status,
       elapsed: fixture.fixture.status.elapsed,
+      extra: fixture.fixture.status.extra ?? null,
     })
     .select("id")
     .single();
@@ -279,7 +285,8 @@ export async function GET(request: Request) {
             (match.home_score !== fixture.goals.home ||
               match.away_score !== fixture.goals.away ||
               match.status !== status ||
-              match.elapsed !== fixture.fixture.status.elapsed)
+              match.elapsed !== fixture.fixture.status.elapsed ||
+              match.extra !== (fixture.fixture.status.extra ?? null))
           ) {
             await supabase
               .from("matches")
@@ -288,6 +295,7 @@ export async function GET(request: Request) {
                 away_score: fixture.goals.away,
                 status,
                 elapsed: fixture.fixture.status.elapsed,
+                extra: fixture.fixture.status.extra ?? null,
               })
               .eq("id", match.id);
             updated++;
