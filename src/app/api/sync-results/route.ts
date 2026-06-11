@@ -157,7 +157,7 @@ async function findMatchingMatch(fixture: ApiFixture) {
   const { data: matches } = await supabase
     .from("matches")
     .select(
-      `id, match_date, home_score, away_score, status,
+      `id, match_date, home_score, away_score, status, elapsed,
       home_team:teams!matches_home_team_id_fkey(id, name, code),
       away_team:teams!matches_away_team_id_fkey(id, name, code)`
     )
@@ -275,7 +275,8 @@ export async function GET(request: Request) {
             fixture.goals.away !== null &&
             (match.home_score !== fixture.goals.home ||
               match.away_score !== fixture.goals.away ||
-              match.status !== status)
+              match.status !== status ||
+              match.elapsed !== fixture.fixture.status.elapsed)
           ) {
             await supabase
               .from("matches")
