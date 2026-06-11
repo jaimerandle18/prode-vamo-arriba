@@ -29,6 +29,7 @@ export default function MatchCard({
   );
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(!!prediction);
+  const [deleting, setDeleting] = useState(false);
 
   const matchDate = new Date(match.match_date);
   const isFinished = match.status === "finished";
@@ -59,6 +60,19 @@ export default function MatchCard({
 
     setSaving(false);
     setSaved(true);
+  };
+
+  const handleDelete = async () => {
+    if (!prediction) return;
+    setDeleting(true);
+
+    const supabase = createClient();
+    await supabase.from("predictions").delete().eq("id", prediction.id);
+
+    setHomeScore("");
+    setAwayScore("");
+    setSaved(false);
+    setDeleting(false);
   };
 
   const pointsBadge = () => {
@@ -233,17 +247,28 @@ export default function MatchCard({
       <div className="flex items-center justify-between mt-2 sm:mt-3">
         <div>{pointsBadge()}</div>
         {!locked && !isFinished && !isLive && (
-          <button
-            onClick={handleSave}
-            disabled={saving || saved || homeScore === "" || awayScore === ""}
-            className={`text-[10px] sm:text-xs font-medium px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg transition-colors cursor-pointer ${
-              saved
-                ? "bg-accent/20 text-accent"
-                : "bg-accent text-background hover:bg-accent-hover"
-            } disabled:opacity-50 disabled:cursor-not-allowed`}
-          >
-            {saving ? "Guardando..." : saved ? "Guardado ✓" : "Guardar"}
-          </button>
+          <div className="flex items-center gap-2">
+            {prediction && (
+              <button
+                onClick={handleDelete}
+                disabled={deleting || saving}
+                className="text-[10px] sm:text-xs font-medium px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg transition-colors cursor-pointer bg-red-500/10 text-red-400 hover:bg-red-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {deleting ? "Eliminando..." : "Eliminar"}
+              </button>
+            )}
+            <button
+              onClick={handleSave}
+              disabled={saving || saved || homeScore === "" || awayScore === ""}
+              className={`text-[10px] sm:text-xs font-medium px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg transition-colors cursor-pointer ${
+                saved
+                  ? "bg-accent/20 text-accent"
+                  : "bg-accent text-background hover:bg-accent-hover"
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              {saving ? "Guardando..." : saved ? "Guardado ✓" : "Guardar"}
+            </button>
+          </div>
         )}
       </div>
     </div>

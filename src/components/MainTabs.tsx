@@ -234,6 +234,11 @@ export default function MainTabs({
           filter: `user_id=eq.${userId}`,
         },
         (payload) => {
+          if (payload.eventType === "DELETE") {
+            const removed = payload.old as { id: number };
+            setPredictions((prev) => prev.filter((p) => p.id !== removed.id));
+            return;
+          }
           const updated = payload.new as Prediction;
           setPredictions((prev) => {
             const existing = prev.findIndex(
