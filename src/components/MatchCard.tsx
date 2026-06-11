@@ -170,7 +170,7 @@ export default function MatchCard({
                 className={`text-center text-[10px] sm:text-xs font-bold mt-1.5 ${isLive ? "text-red-400" : "text-foreground/70"}`}
               >
                 {isLive
-                  ? `⏱ ${match.elapsed ? match.elapsed + (match.extra ? "+" + match.extra : "") + "'" : "En vivo"} — ${match.home_score} - ${match.away_score}`
+                  ? `⏱ ${match.elapsed ? match.elapsed + "'" : "En vivo"} — ${match.home_score} - ${match.away_score}`
                   : `Finalizado ${match.home_score} - ${match.away_score}`}
               </p>
             )}

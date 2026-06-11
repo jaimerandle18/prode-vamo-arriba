@@ -74,10 +74,7 @@ create table public.matches (
   city text,
   home_score integer,  -- resultado real (null hasta que se juegue)
   away_score integer,
-  status text default 'scheduled', -- 'scheduled', 'live', 'finished'
-  round text, -- "Group Stage - 1", "Round of 16", etc.
-  elapsed integer, -- minuto del partido en vivo
-  extra integer -- tiempo agregado (45+4)
+  status text default 'scheduled' -- 'scheduled', 'live', 'finished'
 );
 
 alter table public.matches enable row level security;
