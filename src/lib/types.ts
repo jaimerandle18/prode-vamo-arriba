@@ -33,6 +33,7 @@ export interface Match {
   status: string;
   round: string | null;
   elapsed: number | null;
+  extra: number | null; // tiempo agregado (45+4)
   home_team?: Team;
   away_team?: Team;
 }
