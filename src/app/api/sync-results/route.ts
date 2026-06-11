@@ -137,22 +137,14 @@ async function fetchAllUpcomingFixtures(): Promise<ApiFixture[]> {
   return data.response ?? [];
 }
 
-async function findTeamByName(name: string) {
-  const nameLower = name.toLowerCase();
-  const { data: teams } = await supabase.from("teams").select("id, name, code");
-  if (!teams) return null;
-
-  for (const team of teams) {
-    const dbName = team.name.toLowerCase();
-    if (
-      nameLower.includes(dbName) ||
-      dbName.includes(nameLower) ||
-      nameLower.includes(team.code.toLowerCase())
-    ) {
-      return team;
-    }
-  }
-  return null;
+// teams.code guarda el ID de equipo de API-Football
+async function findTeamByApiId(apiTeamId: number) {
+  const { data: team } = await supabase
+    .from("teams")
+    .select("id, name, code")
+    .eq("code", String(apiTeamId))
+    .maybeSingle();
+  return team;
 }
 
 async function findMatchingMatch(fixture: ApiFixture) {
@@ -174,8 +166,9 @@ async function findMatchingMatch(fixture: ApiFixture) {
 
   if (!matches || matches.length === 0) return null;
 
-  const homeNameApi = fixture.teams.home.name.toLowerCase();
-  const awayNameApi = fixture.teams.away.name.toLowerCase();
+  // teams.code guarda el ID de equipo de API-Football
+  const homeIdApi = String(fixture.teams.home.id);
+  const awayIdApi = String(fixture.teams.away.id);
 
   for (const match of matches) {
     const homeTeam = match.home_team as unknown as {
@@ -190,17 +183,7 @@ async function findMatchingMatch(fixture: ApiFixture) {
     };
     if (!homeTeam || !awayTeam) continue;
 
-    const homeNameDb = homeTeam.name.toLowerCase();
-    const awayNameDb = awayTeam.name.toLowerCase();
-
-    if (
-      (homeNameApi.includes(homeNameDb) ||
-        homeNameDb.includes(homeNameApi) ||
-        homeNameApi.includes(homeTeam.code.toLowerCase())) &&
-      (awayNameApi.includes(awayNameDb) ||
-        awayNameDb.includes(awayNameApi) ||
-        awayNameApi.includes(awayTeam.code.toLowerCase()))
-    ) {
+    if (homeTeam.code === homeIdApi && awayTeam.code === awayIdApi) {
       return match;
     }
   }
@@ -210,8 +193,8 @@ async function findMatchingMatch(fixture: ApiFixture) {
 
 // Crear un partido nuevo de eliminatorias que no existe en nuestra DB
 async function createKnockoutMatch(fixture: ApiFixture) {
-  const homeTeam = await findTeamByName(fixture.teams.home.name);
-  const awayTeam = await findTeamByName(fixture.teams.away.name);
+  const homeTeam = await findTeamByApiId(fixture.teams.home.id);
+  const awayTeam = await findTeamByApiId(fixture.teams.away.id);
 
   if (!homeTeam || !awayTeam) return null;
 
