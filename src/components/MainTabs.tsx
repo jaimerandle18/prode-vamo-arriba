@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Match, Prediction, Team, Profile } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 import MatchCard from "./MatchCard";
 import Leaderboard from "./Leaderboard";
 import OthersPredictions from "./OthersPredictions";
 import GroupStandings from "./GroupStandings";
+import GoalCelebration from "./GoalCelebration";
 
 interface MainTabsProps {
   matches: Match[];
@@ -130,6 +131,9 @@ export default function MainTabs({
   const [matches, setMatches] = useState(initialMatches);
   const [predictions, setPredictions] = useState(initialPredictions);
   const [profiles, setProfiles] = useState(initialProfiles);
+  const [celebratingGoal, setCelebratingGoal] = useState(false);
+  const lastGoalRef = useRef<string | null>(null);
+  const endGoalCelebration = useCallback(() => setCelebratingGoal(false), []);
 
   const teamsMap = new Map(teams.map((t) => [t.id, t]));
   const predictionsMap = new Map(predictions.map((p) => [p.match_id, p]));
@@ -178,9 +182,23 @@ export default function MainTabs({
         { event: "UPDATE", schema: "public", table: "matches" },
         (payload) => {
           const updated = payload.new as Match;
-          setMatches((prev) =>
-            prev.map((m) => (m.id === updated.id ? { ...m, ...updated } : m))
-          );
+          setMatches((prev) => {
+            const old = prev.find((m) => m.id === updated.id);
+            const isGoal =
+              old &&
+              ((updated.home_score ?? 0) > (old.home_score ?? 0) ||
+                (updated.away_score ?? 0) > (old.away_score ?? 0));
+            if (isGoal) {
+              const goalKey = `${updated.id}-${updated.home_score}-${updated.away_score}`;
+              if (lastGoalRef.current !== goalKey) {
+                lastGoalRef.current = goalKey;
+                setTimeout(() => setCelebratingGoal(true), 0);
+              }
+            }
+            return prev.map((m) =>
+              m.id === updated.id ? { ...m, ...updated } : m
+            );
+          });
         }
       )
       .subscribe();
@@ -247,6 +265,8 @@ export default function MainTabs({
 
   return (
     <div>
+      {celebratingGoal && <GoalCelebration onDone={endGoalCelebration} />}
+
       {/* Live indicator */}
       {hasLiveMatches && (
         <div className="flex items-center gap-2 mb-3 sm:mb-4 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg">
