@@ -38,9 +38,10 @@ function mapStatus(apiStatus: string): string {
     case "NS":
     case "TBD":
       return "scheduled";
+    case "HT":
+      return "halftime";
     case "1H":
     case "2H":
-    case "HT":
     case "ET":
     case "BT":
     case "P":
@@ -82,7 +83,7 @@ async function hasActiveMatches(): Promise<boolean> {
     .from("matches")
     .select("id, match_date, status")
     .or(
-      `status.eq.live,and(match_date.gte.${recentEnd.toISOString()},match_date.lte.${soon.toISOString()})`
+      `status.eq.live,status.eq.halftime,and(match_date.gte.${recentEnd.toISOString()},match_date.lte.${soon.toISOString()})`
     )
     .limit(1);
 
@@ -214,11 +215,11 @@ async function createKnockoutMatch(fixture: ApiFixture) {
       venue: fixture.fixture.venue?.name ?? null,
       city: fixture.fixture.venue?.city ?? null,
       home_score:
-        status === "live" || status === "finished"
+        status === "live" || status === "halftime" || status === "finished"
           ? fixture.goals.home
           : null,
       away_score:
-        status === "live" || status === "finished"
+        status === "live" || status === "halftime" || status === "finished"
           ? fixture.goals.away
           : null,
       status,
@@ -270,7 +271,9 @@ export async function GET(request: Request) {
         if (match) {
           // Update existing match
           if (
-            (status === "live" || status === "finished") &&
+            (status === "live" ||
+              status === "halftime" ||
+              status === "finished") &&
             fixture.goals.home !== null &&
             fixture.goals.away !== null &&
             (match.home_score !== fixture.goals.home ||

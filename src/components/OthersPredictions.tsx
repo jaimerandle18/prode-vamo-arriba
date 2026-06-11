@@ -72,7 +72,7 @@ export default function OthersPredictions({
   const startedMatches = matches
     .filter((m) => {
       const matchTime = new Date(m.match_date);
-      return matchTime <= now || m.status === "live" || m.status === "finished";
+      return matchTime <= now || m.status === "live" || m.status === "halftime" || m.status === "finished";
     })
     .sort(
       (a, b) =>
@@ -112,7 +112,7 @@ export default function OthersPredictions({
           (p) => p.match_id === match.id
         );
         const isOpen = openMatchId === match.id;
-        const isLive = match.status === "live";
+        const isLive = match.status === "live" || match.status === "halftime";
         const isFinished = match.status === "finished";
         const matchDate = new Date(match.match_date);
 

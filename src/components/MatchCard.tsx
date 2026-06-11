@@ -32,7 +32,8 @@ export default function MatchCard({
 
   const matchDate = new Date(match.match_date);
   const isFinished = match.status === "finished";
-  const isLive = match.status === "live";
+  const isHalftime = match.status === "halftime";
+  const isLive = match.status === "live" || isHalftime;
 
   const handleSave = async () => {
     if (homeScore === "" || awayScore === "") return;
@@ -170,7 +171,7 @@ export default function MatchCard({
                 className={`text-center text-[10px] sm:text-xs font-bold mt-1.5 ${isLive ? "text-red-400" : "text-foreground/70"}`}
               >
                 {isLive
-                  ? `⏱ ${match.elapsed ? match.elapsed + "'" : "En vivo"} — ${match.home_score} - ${match.away_score}`
+                  ? `⏱ ${isHalftime ? "Entretiempo" : match.elapsed ? match.elapsed + "'" : "En vivo"} — ${match.home_score} - ${match.away_score}`
                   : `Finalizado ${match.home_score} - ${match.away_score}`}
               </p>
             )}

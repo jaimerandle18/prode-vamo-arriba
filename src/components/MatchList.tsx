@@ -31,7 +31,7 @@ export default function MatchList({
 
   const now = new Date();
 
-  const hasLiveMatches = matches.some((m) => m.status === "live");
+  const hasLiveMatches = matches.some((m) => m.status === "live" || m.status === "halftime");
 
   // Supabase Realtime: escuchar cambios en matches y predictions
   useEffect(() => {

@@ -139,7 +139,7 @@ export default function MainTabs({
   const predictionsMap = new Map(predictions.map((p) => [p.match_id, p]));
 
   const now = new Date();
-  const hasLiveMatches = matches.some((m) => m.status === "live");
+  const hasLiveMatches = matches.some((m) => m.status === "live" || m.status === "halftime");
 
   // Only auto-open if there's a live match
   useEffect(() => {
@@ -149,7 +149,7 @@ export default function MainTabs({
 
     const sections = groupMatchesByRound(relevantMatches);
     const liveSection = sections.find((s) =>
-      s.matches.some((m) => m.status === "live")
+      s.matches.some((m) => m.status === "live" || m.status === "halftime")
     );
 
     if (liveSection) {
@@ -323,7 +323,7 @@ export default function MainTabs({
               ).length;
               const totalCount = section.matches.length;
               const hasLive = section.matches.some(
-                (m) => m.status === "live"
+                (m) => m.status === "live" || m.status === "halftime"
               );
 
               return (
