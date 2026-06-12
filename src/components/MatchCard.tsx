@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Match, Prediction, Team } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 
@@ -35,6 +35,23 @@ export default function MatchCard({
   const isFinished = match.status === "finished";
   const isHalftime = match.status === "halftime";
   const isLive = match.status === "live" || isHalftime;
+
+  // Segundos interpolados: el sync trae el minuto cada ~1 min,
+  // este contador arranca de cero con cada update del minuto.
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    if (!isLive || isHalftime || !match.elapsed) return;
+    setSeconds(0);
+    const timer = setInterval(
+      () => setSeconds((s) => Math.min(s + 1, 59)),
+      1000
+    );
+    return () => clearInterval(timer);
+  }, [match.elapsed, match.extra, isLive, isHalftime]);
+
+  const liveClock = match.elapsed
+    ? `${match.elapsed}${match.extra ? "+" + match.extra : ""}' ${String(seconds).padStart(2, "0")}"`
+    : "En vivo";
 
   const handleSave = async () => {
     if (homeScore === "" || awayScore === "") return;
@@ -185,7 +202,7 @@ export default function MatchCard({
                 className={`text-center text-[10px] sm:text-xs font-bold mt-1.5 ${isLive ? "text-red-400" : "text-foreground/70"}`}
               >
                 {isLive
-                  ? `⏱ ${isHalftime ? "Entretiempo" : match.elapsed ? match.elapsed + (match.extra ? "+" + match.extra : "") + "'" : "En vivo"} — ${match.home_score} - ${match.away_score}`
+                  ? `⏱ ${isHalftime ? "Entretiempo" : liveClock} — ${match.home_score} - ${match.away_score}`
                   : `Finalizado ${match.home_score} - ${match.away_score}`}
               </p>
             )}
