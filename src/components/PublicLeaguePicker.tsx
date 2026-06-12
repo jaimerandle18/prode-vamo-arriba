@@ -64,16 +64,9 @@ export default function PublicLeaguePicker({
             { onConflict: "user_id,league_id" }
           );
 
-        // Send welcome email on first join
+        // Send welcome email on first join (el endpoint saca el email de la sesión)
         if (isNew && user.email) {
-          fetch("/api/welcome-email", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              email: user.email,
-              name: user.user_metadata?.full_name || user.user_metadata?.name,
-            }),
-          }).catch(() => {});
+          fetch("/api/welcome-email", { method: "POST" }).catch(() => {});
         }
 
         router.push(`/liga/${leagueId}`);

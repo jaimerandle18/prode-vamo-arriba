@@ -3,6 +3,7 @@ export interface Profile {
   display_name: string;
   avatar_url: string | null;
   total_points: number;
+  is_admin: boolean;
   created_at: string;
 }
 

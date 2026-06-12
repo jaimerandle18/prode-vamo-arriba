@@ -9,6 +9,7 @@ create table public.profiles (
   display_name text not null,
   avatar_url text,
   total_points integer default 0,
+  is_admin boolean not null default false,
   created_at timestamptz default now()
 );
 
@@ -22,6 +23,13 @@ create policy "Usuarios pueden editar su perfil" on public.profiles
 
 create policy "Usuarios pueden insertar su perfil" on public.profiles
   for insert with check (auth.uid() = id);
+
+-- Los usuarios no pueden tocar total_points ni is_admin
+revoke insert, update on table public.profiles from anon, authenticated;
+grant insert (id, display_name, avatar_url)
+  on table public.profiles to authenticated;
+grant update (display_name, avatar_url)
+  on table public.profiles to authenticated;
 
 -- Trigger para crear perfil automáticamente al registrarse
 create or replace function public.handle_new_user()
@@ -88,8 +96,22 @@ alter publication supabase_realtime add table public.matches;
 create policy "Partidos visibles para todos" on public.matches for select using (true);
 create policy "Solo admins actualizan partidos" on public.matches
   for update using (
-    exists (select 1 from public.profiles where id = auth.uid() and display_name = 'admin')
+    exists (select 1 from public.profiles where id = auth.uid() and is_admin)
   );
+
+-- Un partido está "abierto" si todavía se puede pronosticar
+create or replace function public.match_is_open(p_match_id integer)
+returns boolean
+language sql
+stable
+as $$
+  select exists (
+    select 1 from public.matches
+    where id = p_match_id
+      and status = 'scheduled'
+      and match_date > now()
+  );
+$$;
 
 -- Predicciones de usuarios
 create table public.predictions (
@@ -110,13 +132,26 @@ create policy "Usuarios ven todas las predicciones" on public.predictions
   for select using (true);
 
 create policy "Usuarios crean sus predicciones" on public.predictions
-  for insert with check (auth.uid() = user_id);
+  for insert with check (
+    auth.uid() = user_id and public.match_is_open(match_id)
+  );
 
 create policy "Usuarios actualizan sus predicciones" on public.predictions
-  for update using (auth.uid() = user_id);
+  for update
+  using (auth.uid() = user_id and public.match_is_open(match_id))
+  with check (auth.uid() = user_id and public.match_is_open(match_id));
 
 create policy "Usuarios borran sus predicciones" on public.predictions
-  for delete using (auth.uid() = user_id);
+  for delete using (
+    auth.uid() = user_id and public.match_is_open(match_id)
+  );
+
+-- Los usuarios no pueden tocar predictions.points (lo calcula el trigger)
+revoke insert, update on table public.predictions from anon, authenticated;
+grant insert (user_id, match_id, home_score, away_score, updated_at)
+  on table public.predictions to authenticated;
+grant update (home_score, away_score, updated_at)
+  on table public.predictions to authenticated;
 
 -- Habilitar Realtime para predictions
 alter publication supabase_realtime add table public.predictions;

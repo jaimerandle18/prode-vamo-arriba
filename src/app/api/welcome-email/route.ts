@@ -1,19 +1,26 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 import { sendEmail } from "@/lib/mail";
 import { getWelcomeHtml } from "@/lib/email-templates";
 
-export async function POST(request: Request) {
+export async function POST() {
   try {
-    const { email, name } = await request.json();
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    if (!email) {
-      return NextResponse.json({ error: "Email required" }, { status: 400 });
+    if (!user?.email) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const name =
+      user.user_metadata?.full_name || user.user_metadata?.name || "Crack";
+
     await sendEmail({
-      to: email,
+      to: user.email,
       subject: "🏆 Bienvenido al Prode Mundial 2026!",
-      html: getWelcomeHtml(name || "Crack"),
+      html: getWelcomeHtml(name),
     });
 
     return NextResponse.json({ ok: true });

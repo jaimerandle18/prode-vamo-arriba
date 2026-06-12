@@ -30,6 +30,7 @@ export default function MatchCard({
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(!!prediction);
   const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const matchDate = new Date(match.match_date);
   const isFinished = match.status === "finished";
@@ -60,40 +61,61 @@ export default function MatchCard({
   const handleSave = async () => {
     if (homeScore === "" || awayScore === "") return;
     setSaving(true);
+    setError(null);
 
     const supabase = createClient();
     const data = {
-      user_id: userId,
-      match_id: match.id,
       home_score: parseInt(homeScore),
       away_score: parseInt(awayScore),
       updated_at: new Date().toISOString(),
     };
 
+    // Con RLS, un update/delete bloqueado no tira error: devuelve 0 filas.
+    // Por eso el .select() para confirmar que realmente se escribió.
+    let failed: boolean;
     if (prediction) {
-      await supabase
+      const { data: rows, error } = await supabase
         .from("predictions")
         .update(data)
-        .eq("id", prediction.id);
+        .eq("id", prediction.id)
+        .select("id");
+      failed = !!error || !rows?.length;
     } else {
-      await supabase.from("predictions").insert(data);
+      const { error } = await supabase
+        .from("predictions")
+        .insert({ user_id: userId, match_id: match.id, ...data });
+      failed = !!error;
     }
 
     setSaving(false);
-    setSaved(true);
+    if (failed) {
+      setError("No se pudo guardar el pronóstico. Probá de nuevo.");
+    } else {
+      setSaved(true);
+    }
   };
 
   const handleDelete = async () => {
     if (!prediction) return;
     setDeleting(true);
+    setError(null);
 
     const supabase = createClient();
-    await supabase.from("predictions").delete().eq("id", prediction.id);
+    const { data: rows, error } = await supabase
+      .from("predictions")
+      .delete()
+      .eq("id", prediction.id)
+      .select("id");
+
+    setDeleting(false);
+    if (error || !rows?.length) {
+      setError("No se pudo eliminar el pronóstico. Probá de nuevo.");
+      return;
+    }
 
     setHomeScore("");
     setAwayScore("");
     setSaved(false);
-    setDeleting(false);
   };
 
   const pointsBadge = () => {
@@ -328,6 +350,12 @@ export default function MatchCard({
           </div>
         )}
       </div>
+
+      {error && (
+        <p className="text-[10px] sm:text-xs text-red-400 mt-2 text-center">
+          {error}
+        </p>
+      )}
     </div>
   );
 }
