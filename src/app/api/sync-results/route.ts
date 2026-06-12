@@ -392,22 +392,29 @@ async function sendReminders(): Promise<number> {
 
     const predictedUserIds = new Set(predictions?.map((p) => p.user_id) ?? []);
 
-    // Send to users who haven't predicted
-    for (const user of users.users) {
-      if (predictedUserIds.has(user.id)) continue;
-      if (!user.email) continue;
+    // Send to users who haven't predicted — en paralelo para no
+    // exceder el timeout de la función cuando son muchos
+    const recipients = users.users.filter(
+      (user) => !predictedUserIds.has(user.id) && user.email
+    );
 
-      try {
-        await sendEmail({
-          to: user.email,
+    const results = await Promise.allSettled(
+      recipients.map((user) =>
+        sendEmail({
+          to: user.email!,
           subject: `⚽ ${homeTeam.name} vs ${awayTeam.name} arranca en 10 minutos!`,
           html: getReminderHtml(homeTeam, awayTeam),
-        });
+        })
+      )
+    );
+
+    results.forEach((r, i) => {
+      if (r.status === "fulfilled") {
         sent++;
-      } catch (e) {
-        console.error("Email error for", user.email, e);
+      } else {
+        console.error("Email error for", recipients[i].email, r.reason);
       }
-    }
+    });
   }
 
   return sent;
