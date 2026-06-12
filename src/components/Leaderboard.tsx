@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Profile } from "@/lib/types";
+import { Match, Profile, Team } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 
 // Racha: resultados consecutivos (acierto/error) en partidos finalizados,
@@ -21,12 +21,45 @@ const LEAGUE_NAMES: Record<string, string> = {
 export default function Leaderboard({
   profiles,
   leagueId,
+  matches = [],
+  teams = [],
 }: {
   profiles: Profile[];
   leagueId?: string;
+  matches?: Match[];
+  teams?: Team[];
 }) {
   const [streaks, setStreaks] = useState<Map<string, StreakInfo>>(new Map());
   const [sharing, setSharing] = useState(false);
+  const [livePoints, setLivePoints] = useState<Map<string, number>>(new Map());
+
+  const liveMatches = matches.filter(
+    (m) => m.status === "live" || m.status === "halftime"
+  );
+  const liveMatchIds = liveMatches.map((m) => m.id).join(",");
+  const teamsMap = new Map(teams.map((t) => [t.id, t]));
+
+  // Puntos provisorios de los partidos en curso (el trigger de la DB
+  // ya los calcula en vivo; acá los traemos para mostrarlos aparte)
+  useEffect(() => {
+    if (!liveMatchIds) {
+      setLivePoints(new Map());
+      return;
+    }
+    const supabase = createClient();
+    supabase
+      .from("predictions")
+      .select("user_id, points")
+      .in("match_id", liveMatchIds.split(",").map(Number))
+      .then(({ data }) => {
+        const sums = new Map<string, number>();
+        for (const p of data ?? []) {
+          sums.set(p.user_id, (sums.get(p.user_id) ?? 0) + (p.points ?? 0));
+        }
+        setLivePoints(sums);
+      });
+    // matches cambia con cada update de Realtime (gol/minuto) → refetch
+  }, [liveMatchIds, matches]);
 
   useEffect(() => {
     const supabase = createClient();
@@ -206,6 +239,47 @@ export default function Leaderboard({
         </div>
       </div>
 
+      {/* Partidos en juego: la tabla se mueve con cada gol */}
+      {liveMatches.length > 0 && (
+        <div className="mb-3 space-y-1.5">
+          {liveMatches.map((m) => {
+            const home = teamsMap.get(m.home_team_id);
+            const away = teamsMap.get(m.away_team_id);
+            if (!home || !away) return null;
+            return (
+              <div
+                key={m.id}
+                className="flex items-center justify-between bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2"
+              >
+                <span className="flex items-center gap-2 text-[11px] sm:text-sm font-medium min-w-0">
+                  <span className="relative flex h-2 w-2 shrink-0">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                  </span>
+                  <span className="truncate">
+                    {home.flag_emoji} {home.name}{" "}
+                    <span className="font-bold text-red-400">
+                      {m.home_score} - {m.away_score}
+                    </span>{" "}
+                    {away.name} {away.flag_emoji}
+                  </span>
+                </span>
+                <span className="text-[10px] sm:text-xs font-bold text-red-400 shrink-0 ml-2">
+                  {m.status === "halftime"
+                    ? "ET"
+                    : m.elapsed
+                      ? `${m.elapsed}${m.extra ? "+" + m.extra : ""}'`
+                      : ""}
+                </span>
+              </div>
+            );
+          })}
+          <p className="text-[10px] sm:text-xs text-muted text-center">
+            ⚡ = puntos en juego con el resultado actual
+          </p>
+        </div>
+      )}
+
       {sorted.length === 0 ? (
         <p className="text-center text-muted py-4 sm:py-6 text-sm">
           Todavía no hay jugadores ⚽
@@ -250,6 +324,11 @@ export default function Leaderboard({
                     <span className="text-[9px] sm:text-[10px] text-muted font-bold ml-0.5">
                       {streak.count}
                     </span>
+                  </span>
+                )}
+                {(livePoints.get(profile.id) ?? 0) > 0 && (
+                  <span className="text-[9px] sm:text-[10px] font-bold bg-gold/15 text-gold rounded-full px-1.5 py-px shrink-0">
+                    ⚡+{livePoints.get(profile.id)}
                   </span>
                 )}
                 <span className="font-bold text-accent text-xs sm:text-sm shrink-0">

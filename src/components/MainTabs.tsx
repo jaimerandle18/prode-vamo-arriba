@@ -326,7 +326,12 @@ export default function MainTabs({
 
       {/* Tab content */}
       {tab === "leaderboard" ? (
-        <Leaderboard profiles={profiles} leagueId={leagueId} />
+        <Leaderboard
+          profiles={profiles}
+          leagueId={leagueId}
+          matches={matches}
+          teams={teams}
+        />
       ) : tab === "grupos" ? (
         <GroupStandings matches={matches} teams={teams} leagueId={leagueId} />
       ) : tab === "resto" ? (
