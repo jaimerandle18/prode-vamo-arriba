@@ -8,7 +8,6 @@ import Leaderboard from "./Leaderboard";
 import OthersPredictions from "./OthersPredictions";
 import GroupStandings from "./GroupStandings";
 import GoalCelebration from "./GoalCelebration";
-import LiveReactions from "./LiveReactions";
 
 interface MainTabsProps {
   matches: Match[];
@@ -294,8 +293,6 @@ export default function MainTabs({
       {celebratingGoal && (
         <GoalCelebration {...celebratingGoal} onDone={endGoalCelebration} />
       )}
-
-      {hasLiveMatches && <LiveReactions leagueId={leagueId} />}
 
       {/* Live indicator */}
       {hasLiveMatches && (
