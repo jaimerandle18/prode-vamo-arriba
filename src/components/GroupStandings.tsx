@@ -28,8 +28,13 @@ function calculateStandings(
   groupId: string
 ): TeamStanding[] {
   const groupTeams = teams.filter((t) => t.group_id === groupId);
+  // Incluye los partidos en curso: la tabla se mueve en vivo con cada gol
   const groupMatches = matches.filter(
-    (m) => m.group_id === groupId && m.status === "finished"
+    (m) =>
+      m.group_id === groupId &&
+      (m.status === "finished" ||
+        m.status === "live" ||
+        m.status === "halftime")
   );
 
   const standings: TeamStanding[] = groupTeams.map((team) => ({
@@ -152,6 +157,14 @@ export default function GroupStandings({
         const groupFinishedMatches = matches.filter(
           (m) => m.group_id === groupId && m.status === "finished"
         ).length;
+        const groupLiveMatches = matches.filter(
+          (m) =>
+            m.group_id === groupId &&
+            (m.status === "live" || m.status === "halftime")
+        );
+        const liveTeamIds = new Set(
+          groupLiveMatches.flatMap((m) => [m.home_team_id, m.away_team_id])
+        );
 
         return (
           <div key={groupId}>
@@ -172,6 +185,15 @@ export default function GroupStandings({
                   <span className="text-[10px] sm:text-xs text-muted ml-2">
                     {groupFinishedMatches}/6 jugados
                   </span>
+                  {groupLiveMatches.length > 0 && (
+                    <span className="inline-flex items-center gap-1 ml-2 text-[9px] sm:text-[10px] font-bold text-red-400">
+                      <span className="relative flex h-1.5 w-1.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span>
+                      </span>
+                      EN VIVO
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -220,6 +242,7 @@ export default function GroupStandings({
                 {standings.map((s, idx) => {
                   const qualifies = idx < 2;
                   const thirdPlace = idx === 2;
+                  const isPlaying = liveTeamIds.has(s.team.id);
 
                   return (
                     <div
@@ -228,7 +251,7 @@ export default function GroupStandings({
                         idx < standings.length - 1
                           ? "border-b border-card-border/50"
                           : ""
-                      }`}
+                      } ${isPlaying ? "bg-red-500/5" : ""}`}
                     >
                       <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
                         <span className="text-[10px] sm:text-xs text-muted w-3 text-center shrink-0">
@@ -240,6 +263,12 @@ export default function GroupStandings({
                         <span className="font-medium truncate text-xs sm:text-sm">
                           {s.team.name}
                         </span>
+                        {isPlaying && (
+                          <span className="relative flex h-1.5 w-1.5 shrink-0">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span>
+                          </span>
+                        )}
                       </div>
                       <span className="text-center text-muted">
                         {s.played}
@@ -270,6 +299,12 @@ export default function GroupStandings({
                     <span className="w-2 h-2 rounded-full bg-gold/30"></span>
                     Posible 3ro
                   </div>
+                  {groupLiveMatches.length > 0 && (
+                    <div className="flex items-center gap-1 text-red-400">
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                      Jugando ahora — tabla provisoria
+                    </div>
+                  )}
                 </div>
               </div>
             )}
