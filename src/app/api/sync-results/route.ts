@@ -1,7 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendEmail } from "@/lib/mail";
 import { getReminderHtml } from "@/lib/email-templates";
+
+// El cron pega cada 1 min; con las pasadas extra en background el
+// muestreo efectivo de la API baja a ~20s durante partidos en vivo.
+export const maxDuration = 60;
+
+const EXTRA_POLLS = 2;
+const POLL_INTERVAL_MS = 20_000;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -241,6 +249,59 @@ async function createKnockoutMatch(fixture: ApiFixture) {
   return data;
 }
 
+// Una pasada de sync: trae los fixtures del día y actualiza la DB
+async function syncLiveFixtures(): Promise<{
+  updated: number;
+  created: number;
+  anyLive: boolean;
+}> {
+  let updated = 0;
+  let created = 0;
+  let anyLive = false;
+
+  const fixtures = await fetchFixtures();
+
+  for (const fixture of fixtures) {
+    const status = mapStatus(fixture.fixture.status.short);
+    if (status === "live" || status === "halftime") anyLive = true;
+    const match = await findMatchingMatch(fixture);
+
+    if (match) {
+      // Update existing match
+      if (
+        (status === "live" ||
+          status === "halftime" ||
+          status === "finished") &&
+        fixture.goals.home !== null &&
+        fixture.goals.away !== null &&
+        (match.home_score !== fixture.goals.home ||
+          match.away_score !== fixture.goals.away ||
+          match.status !== status ||
+          match.elapsed !== fixture.fixture.status.elapsed ||
+          match.extra !== (fixture.fixture.status.extra ?? null))
+      ) {
+        await supabase
+          .from("matches")
+          .update({
+            home_score: fixture.goals.home,
+            away_score: fixture.goals.away,
+            status,
+            elapsed: fixture.fixture.status.elapsed,
+            extra: fixture.fixture.status.extra ?? null,
+          })
+          .eq("id", match.id);
+        updated++;
+      }
+    } else {
+      // New match (probably knockout) — create it
+      const result = await createKnockoutMatch(fixture);
+      if (result) created++;
+    }
+  }
+
+  return { updated, created, anyLive };
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const secret = searchParams.get("secret");
@@ -265,47 +326,14 @@ export async function GET(request: Request) {
 
     let updated = 0;
     let created = 0;
+    let anyLive = false;
 
     // Sync today's fixtures (live scores)
     if (active || forceSync) {
-      const fixtures = await fetchFixtures();
-
-      for (const fixture of fixtures) {
-        const status = mapStatus(fixture.fixture.status.short);
-        const match = await findMatchingMatch(fixture);
-
-        if (match) {
-          // Update existing match
-          if (
-            (status === "live" ||
-              status === "halftime" ||
-              status === "finished") &&
-            fixture.goals.home !== null &&
-            fixture.goals.away !== null &&
-            (match.home_score !== fixture.goals.home ||
-              match.away_score !== fixture.goals.away ||
-              match.status !== status ||
-              match.elapsed !== fixture.fixture.status.elapsed ||
-              match.extra !== (fixture.fixture.status.extra ?? null))
-          ) {
-            await supabase
-              .from("matches")
-              .update({
-                home_score: fixture.goals.home,
-                away_score: fixture.goals.away,
-                status,
-                elapsed: fixture.fixture.status.elapsed,
-                extra: fixture.fixture.status.extra ?? null,
-              })
-              .eq("id", match.id);
-            updated++;
-          }
-        } else {
-          // New match (probably knockout) — create it
-          const result = await createKnockoutMatch(fixture);
-          if (result) created++;
-        }
-      }
+      const result = await syncLiveFixtures();
+      updated = result.updated;
+      created = result.created;
+      anyLive = result.anyLive;
     }
 
     // Sync upcoming knockout fixtures (uses 1 extra API call)
@@ -330,6 +358,21 @@ export async function GET(request: Request) {
       reminders_sent = await sendReminders();
     } catch (e) {
       console.error("Reminder error:", e);
+    }
+
+    // Mientras haya partido en vivo, 2 pasadas más en background cada
+    // 20s: el cron pega cada 1 min → muestreo efectivo de ~20s
+    if (anyLive) {
+      after(async () => {
+        for (let i = 0; i < EXTRA_POLLS; i++) {
+          await sleep(POLL_INTERVAL_MS);
+          try {
+            await syncLiveFixtures();
+          } catch (e) {
+            console.error("Background poll error:", e);
+          }
+        }
+      });
     }
 
     return NextResponse.json({
