@@ -145,24 +145,6 @@ export default function MainTabs({
   const now = new Date();
   const hasLiveMatches = matches.some((m) => m.status === "live" || m.status === "halftime");
 
-  // Only auto-open if there's a live match
-  useEffect(() => {
-    if (tab !== "predictions") return;
-
-    const relevantMatches = matches;
-
-    const sections = groupMatchesByRound(relevantMatches);
-    const liveSection = sections.find((s) =>
-      s.matches.some((m) => m.status === "live" || m.status === "halftime")
-    );
-
-    if (liveSection) {
-      setOpenSections(new Set([liveSection.key]));
-    } else {
-      setOpenSections(new Set());
-    }
-  }, [tab]);
-
   const toggleSection = (key: string) => {
     setOpenSections((prev) => {
       const next = new Set(prev);
