@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Match, Prediction, Team } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 
@@ -36,21 +36,8 @@ export default function MatchCard({
   const isHalftime = match.status === "halftime";
   const isLive = match.status === "live" || isHalftime;
 
-  // Segundos interpolados: el sync trae el minuto cada ~1 min,
-  // este contador arranca de cero con cada update del minuto.
-  const [seconds, setSeconds] = useState(0);
-  useEffect(() => {
-    if (!isLive || isHalftime || !match.elapsed) return;
-    setSeconds(0);
-    const timer = setInterval(
-      () => setSeconds((s) => Math.min(s + 1, 59)),
-      1000
-    );
-    return () => clearInterval(timer);
-  }, [match.elapsed, match.extra, isLive, isHalftime]);
-
   const liveClock = match.elapsed
-    ? `${match.elapsed}${match.extra ? "+" + match.extra : ""}' ${String(seconds).padStart(2, "0")}"`
+    ? `${match.elapsed}${match.extra ? "+" + match.extra : ""}'`
     : "En vivo";
 
   const handleSave = async () => {
