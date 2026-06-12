@@ -40,6 +40,23 @@ export default function MatchCard({
     ? `${match.elapsed}${match.extra ? "+" + match.extra : ""}'`
     : "En vivo";
 
+  const hasScore =
+    (isLive || isFinished) &&
+    match.home_score !== null &&
+    match.away_score !== null;
+
+  // Puntos que sumaría el pronóstico con el resultado actual
+  const livePoints = (() => {
+    if (!prediction || !hasScore) return null;
+    const ph = prediction.home_score;
+    const pa = prediction.away_score;
+    const rh = match.home_score!;
+    const ra = match.away_score!;
+    if (ph === rh && pa === ra) return 3;
+    const sign = (a: number, b: number) => (a > b ? 1 : a < b ? -1 : 0);
+    return sign(ph, pa) === sign(rh, ra) ? 1 : 0;
+  })();
+
   const handleSave = async () => {
     if (homeScore === "" || awayScore === "") return;
     setSaving(true);
@@ -132,7 +149,7 @@ export default function MatchCard({
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
             </span>
-            EN VIVO
+            {isHalftime ? "ENTRETIEMPO" : liveClock}
           </span>
         ) : isFinished ? (
           <span className="text-[10px] sm:text-xs font-bold text-foreground/70 shrink-0">
@@ -158,41 +175,77 @@ export default function MatchCard({
           {/* Prediction row: teams aligned with score */}
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="flex-1 text-right min-w-0">
-              <span className="text-xs sm:text-sm font-medium">
+              <span className="block truncate whitespace-nowrap text-xs sm:text-sm font-medium">
                 <span className="hidden sm:inline">{homeTeam.flag_emoji} </span>
-                <span className="truncate">{homeTeam.name}</span>
+                {homeTeam.name}
                 <span className="sm:hidden"> {homeTeam.flag_emoji}</span>
               </span>
             </div>
             <div className="flex items-center gap-1 shrink-0">
-              <span className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-card-border font-bold text-base sm:text-lg rounded-lg">
-                {prediction ? prediction.home_score : "-"}
+              <span
+                className={`w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center font-bold text-base sm:text-lg rounded-lg ${
+                  hasScore && isLive
+                    ? "bg-red-500/15 border border-red-500/40 text-red-400"
+                    : "bg-card-border"
+                }`}
+              >
+                {hasScore
+                  ? match.home_score
+                  : prediction
+                    ? prediction.home_score
+                    : "-"}
               </span>
               <span className="text-muted text-[10px]">-</span>
-              <span className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-card-border font-bold text-base sm:text-lg rounded-lg">
-                {prediction ? prediction.away_score : "-"}
+              <span
+                className={`w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center font-bold text-base sm:text-lg rounded-lg ${
+                  hasScore && isLive
+                    ? "bg-red-500/15 border border-red-500/40 text-red-400"
+                    : "bg-card-border"
+                }`}
+              >
+                {hasScore
+                  ? match.away_score
+                  : prediction
+                    ? prediction.away_score
+                    : "-"}
               </span>
             </div>
             <div className="flex-1 min-w-0">
-              <span className="text-xs sm:text-sm font-medium">
+              <span className="block truncate whitespace-nowrap text-xs sm:text-sm font-medium">
                 <span className="sm:hidden">{awayTeam.flag_emoji} </span>
-                <span className="truncate">{awayTeam.name}</span>
+                {awayTeam.name}
                 <span className="hidden sm:inline"> {awayTeam.flag_emoji}</span>
               </span>
             </div>
           </div>
-          {/* Live/final score below */}
-          {(isLive || isFinished) &&
-            match.home_score !== null &&
-            match.away_score !== null && (
-              <p
-                className={`text-center text-[10px] sm:text-xs font-bold mt-1.5 ${isLive ? "text-red-400" : "text-foreground/70"}`}
+          {/* Tu pronóstico debajo del resultado real */}
+          {hasScore && prediction && (
+            <div className="flex justify-center mt-2">
+              <span
+                className={`inline-flex items-center gap-1.5 bg-background/60 border border-card-border rounded-full pl-2.5 py-0.5 text-[10px] sm:text-xs text-muted ${
+                  isLive && livePoints !== null ? "pr-1" : "pr-2.5"
+                }`}
               >
-                {isLive
-                  ? `⏱ ${isHalftime ? "Entretiempo" : liveClock} — ${match.home_score} - ${match.away_score}`
-                  : `Finalizado ${match.home_score} - ${match.away_score}`}
-              </p>
-            )}
+                🎯 Tu pronóstico
+                <span className="font-bold text-foreground/90">
+                  {prediction.home_score} - {prediction.away_score}
+                </span>
+                {isLive && livePoints !== null && (
+                  <span
+                    className={`font-bold rounded-full px-1.5 py-px ${
+                      livePoints === 3
+                        ? "bg-accent/20 text-accent"
+                        : livePoints === 1
+                          ? "bg-gold/20 text-gold"
+                          : "bg-red-500/15 text-red-400"
+                    }`}
+                  >
+                    {livePoints === 3 ? "+3 🎯" : livePoints === 1 ? "+1" : "+0"}
+                  </span>
+                )}
+              </span>
+            </div>
+          )}
         </div>
       ) : (
         <div className="flex items-center gap-2 sm:gap-3">
