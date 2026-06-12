@@ -34,17 +34,6 @@ body {
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
 
-/* Emblema del Mundial 2026 como marca de agua tenue, fija detrás de todo */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  background: url(/mundial-2026.png) center 12% / auto min(60vh, 480px) no-repeat;
-  opacity: 0.05;
-  pointer-events: none;
-}
-
 /* Score input styling */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {

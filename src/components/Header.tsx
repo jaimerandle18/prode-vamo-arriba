@@ -26,10 +26,14 @@ export default function Header({
         <div className="min-w-0 flex items-center gap-2">
           <a
             href="/"
-            className="text-base sm:text-lg hover:opacity-70 transition-opacity"
+            className="shrink-0 hover:opacity-70 transition-opacity"
             title="Cambiar de liga"
           >
-            ⚽
+            <img
+              src="/mundial-2026.png"
+              alt="Mundial 2026"
+              className="h-8 sm:h-10 w-auto"
+            />
           </a>
           <div>
             <h1 className="text-base sm:text-xl font-bold tracking-tight truncate">
