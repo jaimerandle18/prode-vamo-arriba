@@ -194,7 +194,7 @@ export default function Leaderboard({
       <div className="flex items-center justify-between mb-3 sm:mb-4">
         <h2 className="text-base sm:text-lg font-bold">🏆  Tabla de posiciones</h2>
         <div className="flex items-center gap-2">
-          <span className="text-[10px] sm:text-xs text-muted">+1 ganador · +3 exacto</span>
+          <span className="hidden sm:inline text-xs text-muted whitespace-nowrap">+1 ganador · +3 exacto</span>
           <button
             onClick={shareImage}
             disabled={sharing || sorted.length === 0}
