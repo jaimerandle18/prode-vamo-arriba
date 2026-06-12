@@ -13,8 +13,20 @@ interface StreakInfo {
   count: number;
 }
 
-export default function Leaderboard({ profiles }: { profiles: Profile[] }) {
+const LEAGUE_NAMES: Record<string, string> = {
+  "vamo-arriba": "VAMO ARRIBA",
+  "las-pibas": "LAS PIBAS",
+};
+
+export default function Leaderboard({
+  profiles,
+  leagueId,
+}: {
+  profiles: Profile[];
+  leagueId?: string;
+}) {
   const [streaks, setStreaks] = useState<Map<string, StreakInfo>>(new Map());
+  const [sharing, setSharing] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -70,11 +82,128 @@ export default function Leaderboard({ profiles }: { profiles: Profile[] }) {
     return "text-muted";
   };
 
+  // Genera una imagen de la tabla y la comparte (o descarga)
+  const shareImage = async () => {
+    setSharing(true);
+    try {
+      const W = 900;
+      const rowH = 76;
+      const headerH = 190;
+      const footerH = 90;
+      const H = headerH + sorted.length * rowH + footerH;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = W;
+      canvas.height = H;
+      const ctx = canvas.getContext("2d")!;
+
+      // Fondo
+      const bg = ctx.createLinearGradient(0, 0, 0, H);
+      bg.addColorStop(0, "#0c1a0f");
+      bg.addColorStop(1, "#09090b");
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, W, H);
+
+      // Header
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#fafafa";
+      ctx.font = "900 56px -apple-system, system-ui, sans-serif";
+      ctx.fillText(
+        `🏆 ${LEAGUE_NAMES[leagueId ?? ""] ?? "PRODE"}`,
+        W / 2,
+        85
+      );
+      ctx.fillStyle = "#22c55e";
+      ctx.font = "700 26px -apple-system, system-ui, sans-serif";
+      ctx.fillText("PRODE MUNDIAL 2026 · TABLA DE POSICIONES", W / 2, 130);
+      ctx.fillStyle = "#71717a";
+      ctx.font = "400 22px -apple-system, system-ui, sans-serif";
+      ctx.fillText(
+        new Date().toLocaleDateString("es-AR", {
+          day: "numeric",
+          month: "long",
+        }),
+        W / 2,
+        165
+      );
+
+      // Filas
+      sorted.forEach((p, i) => {
+        const y = headerH + i * rowH;
+        const streak = streaks.get(p.id);
+        const isClown = showClown && p.total_points === minPoints;
+
+        if (i % 2 === 0) {
+          ctx.fillStyle = "rgba(255,255,255,0.03)";
+          ctx.fillRect(30, y, W - 60, rowH);
+        }
+
+        ctx.textAlign = "left";
+        const medal =
+          i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}`;
+        ctx.fillStyle = "#a1a1aa";
+        ctx.font = "700 34px -apple-system, system-ui, sans-serif";
+        ctx.fillText(medal, 55, y + 50);
+
+        ctx.fillStyle = "#fafafa";
+        ctx.font = "600 32px -apple-system, system-ui, sans-serif";
+        const name = `${p.display_name}${isClown ? " 🤡" : ""}${streak ? ` ${streak.emoji}${streak.count}` : ""}`;
+        ctx.fillText(name, 130, y + 50, W - 320);
+
+        ctx.textAlign = "right";
+        ctx.fillStyle = "#22c55e";
+        ctx.font = "900 34px -apple-system, system-ui, sans-serif";
+        ctx.fillText(`${p.total_points} pts`, W - 55, y + 50);
+      });
+
+      // Footer
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#52525b";
+      ctx.font = "400 22px -apple-system, system-ui, sans-serif";
+      ctx.fillText(
+        "prode-vamo-arriba.vercel.app",
+        W / 2,
+        H - 40
+      );
+
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, "image/png")
+      );
+      if (!blob) return;
+
+      const file = new File([blob], "prode-tabla.png", { type: "image/png" });
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file] });
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "prode-tabla.png";
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    } catch {
+      // usuario canceló el share — no es error
+    } finally {
+      setSharing(false);
+    }
+  };
+
   return (
     <div className="bg-card border border-card-border rounded-xl p-3 sm:p-4">
       <div className="flex items-center justify-between mb-3 sm:mb-4">
         <h2 className="text-base sm:text-lg font-bold">🏆  Tabla de posiciones</h2>
-        <span className="text-[10px] sm:text-xs text-muted">+1 ganador · +3 exacto</span>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] sm:text-xs text-muted">+1 ganador · +3 exacto</span>
+          <button
+            onClick={shareImage}
+            disabled={sharing || sorted.length === 0}
+            title="Compartir tabla"
+            className="text-[10px] sm:text-xs font-medium px-2 py-1 rounded-lg bg-accent/15 text-accent hover:bg-accent/25 transition-colors cursor-pointer disabled:opacity-50"
+          >
+            {sharing ? "..." : "📲 Compartir"}
+          </button>
+        </div>
       </div>
 
       {sorted.length === 0 ? (
