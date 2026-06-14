@@ -259,7 +259,18 @@ async function syncLiveFixtures(): Promise<{
   let created = 0;
   let anyLive = false;
 
-  const fixtures = await fetchFixtures();
+  // Traemos hoy y ayer (en UTC): un partido que arranca cerca de la
+  // medianoche UTC termina con fecha de "ayer" y, si solo pidiéramos el
+  // día actual, su resultado final nunca llegaría (quedaba trabado en vivo).
+  const today = new Date().toISOString().split("T")[0];
+  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
+    .toISOString()
+    .split("T")[0];
+  const [todayFx, yesterdayFx] = await Promise.all([
+    fetchFixtures(today),
+    fetchFixtures(yesterday),
+  ]);
+  const fixtures = [...todayFx, ...yesterdayFx];
 
   for (const fixture of fixtures) {
     const status = mapStatus(fixture.fixture.status.short);
