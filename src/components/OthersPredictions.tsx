@@ -30,11 +30,43 @@ export default function OthersPredictions({
     const supabase = createClient();
 
     async function fetchAll() {
-      const { data } = await supabase
-        .from("predictions")
-        .select("*")
-        .returns<Prediction[]>();
-      setAllPredictions(data ?? []);
+      // Solo partidos que ya arrancaron: evita spoilear los pronósticos de
+      // partidos futuros (antes se bajaba TODA la tabla al cliente) y baja
+      // bastante la cantidad de filas.
+      const startedIds = matches
+        .filter((m) => {
+          const t = new Date(m.match_date);
+          return (
+            t <= new Date() ||
+            m.status === "live" ||
+            m.status === "halftime" ||
+            m.status === "finished"
+          );
+        })
+        .map((m) => m.id);
+
+      if (startedIds.length === 0) {
+        setAllPredictions([]);
+        setLoading(false);
+        return;
+      }
+
+      // Supabase capa cada respuesta en 1000 filas (max-rows). Con el Mundial
+      // avanzado los pronósticos pasan ese tope, así que paginamos de a 1000.
+      const PAGE = 1000;
+      const all: Prediction[] = [];
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await supabase
+          .from("predictions")
+          .select("*")
+          .in("match_id", startedIds)
+          .range(from, from + PAGE - 1)
+          .returns<Prediction[]>();
+        if (error || !data) break;
+        all.push(...data);
+        if (data.length < PAGE) break;
+      }
+      setAllPredictions(all);
       setLoading(false);
     }
 
