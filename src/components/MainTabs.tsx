@@ -139,7 +139,6 @@ export default function MainTabs({
   const lastGoalRef = useRef<string | null>(null);
   const endGoalCelebration = useCallback(() => setCelebratingGoal(null), []);
   const matchRefs = useRef<Map<number, HTMLDivElement | null>>(new Map());
-  const didAutoOpenRef = useRef(false);
 
   const teamsMap = new Map(teams.map((t) => [t.id, t]));
   const predictionsMap = new Map(predictions.map((p) => [p.match_id, p]));
@@ -186,23 +185,6 @@ export default function MainTabs({
     });
     if (willOpen && key === activeSectionKey) scrollToNextMatch();
   };
-
-  // Al entrar a Pronósticos, abrir la fecha en curso y llevar al próximo partido.
-  useEffect(() => {
-    if (tab !== "predictions") {
-      didAutoOpenRef.current = false;
-      return;
-    }
-    if (didAutoOpenRef.current || !activeSectionKey) return;
-    didAutoOpenRef.current = true;
-    setOpenSections((prev) => {
-      if (prev.has(activeSectionKey)) return prev;
-      const next = new Set(prev);
-      next.add(activeSectionKey);
-      return next;
-    });
-    scrollToNextMatch();
-  }, [tab, activeSectionKey, scrollToNextMatch]);
 
   // Supabase Realtime
   useEffect(() => {
