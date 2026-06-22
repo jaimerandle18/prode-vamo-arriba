@@ -138,7 +138,7 @@ export default function MainTabs({
   } | null>(null);
   const lastGoalRef = useRef<string | null>(null);
   const endGoalCelebration = useCallback(() => setCelebratingGoal(null), []);
-  const sectionRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
+  const matchRefs = useRef<Map<number, HTMLDivElement | null>>(new Map());
   const didAutoOpenRef = useRef(false);
 
   const teamsMap = new Map(teams.map((t) => [t.id, t]));
@@ -147,7 +147,34 @@ export default function MainTabs({
   const now = new Date();
   const hasLiveMatches = matches.some((m) => m.status === "live" || m.status === "halftime");
 
+  // Próximo partido: el más cercano que todavía no terminó (incluye el que se
+  // está jugando ahora). De ahí sale la "fecha en curso" y a dónde scrollear.
+  const nextMatch = useMemo(() => {
+    return (
+      [...matches]
+        .filter((m) => m.status !== "finished")
+        .sort(
+          (a, b) =>
+            new Date(a.match_date).getTime() - new Date(b.match_date).getTime()
+        )[0] ?? null
+    );
+  }, [matches]);
+  const activeSectionKey = nextMatch ? getRoundInfo(nextMatch).key : null;
+  const nextMatchId = nextMatch?.id ?? null;
+
+  const scrollToNextMatch = useCallback(() => {
+    if (nextMatchId == null) return;
+    // Esperamos a que el acordeón termine de abrir antes de scrollear.
+    setTimeout(() => {
+      matchRefs.current.get(nextMatchId)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }, 80);
+  }, [nextMatchId]);
+
   const toggleSection = (key: string) => {
+    const willOpen = !openSections.has(key);
     setOpenSections((prev) => {
       const next = new Set(prev);
       if (next.has(key)) {
@@ -157,22 +184,10 @@ export default function MainTabs({
       }
       return next;
     });
+    if (willOpen && key === activeSectionKey) scrollToNextMatch();
   };
 
-  // Sección de la fecha que se está jugando ahora, o la próxima por jugarse:
-  // el partido más cercano que todavía no terminó.
-  const activeSectionKey = useMemo(() => {
-    const next = matches
-      .filter((m) => m.status !== "finished")
-      .sort(
-        (a, b) =>
-          new Date(a.match_date).getTime() - new Date(b.match_date).getTime()
-      )[0];
-    return next ? getRoundInfo(next).key : null;
-  }, [matches]);
-
-  // Al entrar a Pronósticos, abrir esa fecha y scrollear hasta ella para no
-  // tener que bajar a mano hasta el próximo partido.
+  // Al entrar a Pronósticos, abrir la fecha en curso y llevar al próximo partido.
   useEffect(() => {
     if (tab !== "predictions") {
       didAutoOpenRef.current = false;
@@ -186,15 +201,8 @@ export default function MainTabs({
       next.add(activeSectionKey);
       return next;
     });
-    // Esperamos a que el acordeón termine de abrir antes de scrollear.
-    const t = setTimeout(() => {
-      sectionRefs.current.get(activeSectionKey)?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }, 60);
-    return () => clearTimeout(t);
-  }, [tab, activeSectionKey]);
+    scrollToNextMatch();
+  }, [tab, activeSectionKey, scrollToNextMatch]);
 
   // Supabase Realtime
   useEffect(() => {
@@ -379,14 +387,10 @@ export default function MainTabs({
                 (m) => m.status === "live" || m.status === "halftime"
               );
 
+              const isCurrentRound = section.key === activeSectionKey;
+
               return (
-                <div
-                  key={section.key}
-                  ref={(el) => {
-                    sectionRefs.current.set(section.key, el);
-                  }}
-                  className="scroll-mt-4"
-                >
+                <div key={section.key}>
                   {/* Accordion header */}
                   <button
                     onClick={() => toggleSection(section.key)}
@@ -401,8 +405,13 @@ export default function MainTabs({
                         {section.emoji}
                       </span>
                       <div className="min-w-0">
-                        <span className="text-sm sm:text-base font-semibold block truncate">
-                          {section.label}
+                        <span className="text-sm sm:text-base font-semibold flex items-center gap-2 truncate">
+                          <span className="truncate">{section.label}</span>
+                          {isCurrentRound && (
+                            <span className="shrink-0 text-[9px] sm:text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-accent/15 text-accent border border-accent/30">
+                              Fecha en curso
+                            </span>
+                          )}
                         </span>
                         <span className="text-[10px] sm:text-xs text-muted">
                           {totalCount} partidos
@@ -464,15 +473,22 @@ export default function MainTabs({
                           const locked = matchTime <= now;
 
                           return (
-                            <MatchCard
+                            <div
                               key={match.id}
-                              match={match}
-                              homeTeam={homeTeam}
-                              awayTeam={awayTeam}
-                              prediction={predictionsMap.get(match.id)}
-                              userId={userId}
-                              locked={locked}
-                            />
+                              ref={(el) => {
+                                matchRefs.current.set(match.id, el);
+                              }}
+                              className="scroll-mt-4"
+                            >
+                              <MatchCard
+                                match={match}
+                                homeTeam={homeTeam}
+                                awayTeam={awayTeam}
+                                prediction={predictionsMap.get(match.id)}
+                                userId={userId}
+                                locked={locked}
+                              />
+                            </div>
                           );
                         })
                       )}
