@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Match, Prediction, Team, Profile } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 import MatchCard from "./MatchCard";
@@ -138,6 +138,8 @@ export default function MainTabs({
   } | null>(null);
   const lastGoalRef = useRef<string | null>(null);
   const endGoalCelebration = useCallback(() => setCelebratingGoal(null), []);
+  const sectionRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
+  const didAutoOpenRef = useRef(false);
 
   const teamsMap = new Map(teams.map((t) => [t.id, t]));
   const predictionsMap = new Map(predictions.map((p) => [p.match_id, p]));
@@ -156,6 +158,43 @@ export default function MainTabs({
       return next;
     });
   };
+
+  // Sección de la fecha que se está jugando ahora, o la próxima por jugarse:
+  // el partido más cercano que todavía no terminó.
+  const activeSectionKey = useMemo(() => {
+    const next = matches
+      .filter((m) => m.status !== "finished")
+      .sort(
+        (a, b) =>
+          new Date(a.match_date).getTime() - new Date(b.match_date).getTime()
+      )[0];
+    return next ? getRoundInfo(next).key : null;
+  }, [matches]);
+
+  // Al entrar a Pronósticos, abrir esa fecha y scrollear hasta ella para no
+  // tener que bajar a mano hasta el próximo partido.
+  useEffect(() => {
+    if (tab !== "predictions") {
+      didAutoOpenRef.current = false;
+      return;
+    }
+    if (didAutoOpenRef.current || !activeSectionKey) return;
+    didAutoOpenRef.current = true;
+    setOpenSections((prev) => {
+      if (prev.has(activeSectionKey)) return prev;
+      const next = new Set(prev);
+      next.add(activeSectionKey);
+      return next;
+    });
+    // Esperamos a que el acordeón termine de abrir antes de scrollear.
+    const t = setTimeout(() => {
+      sectionRefs.current.get(activeSectionKey)?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 60);
+    return () => clearTimeout(t);
+  }, [tab, activeSectionKey]);
 
   // Supabase Realtime
   useEffect(() => {
@@ -341,7 +380,13 @@ export default function MainTabs({
               );
 
               return (
-                <div key={section.key}>
+                <div
+                  key={section.key}
+                  ref={(el) => {
+                    sectionRefs.current.set(section.key, el);
+                  }}
+                  className="scroll-mt-4"
+                >
                   {/* Accordion header */}
                   <button
                     onClick={() => toggleSection(section.key)}
