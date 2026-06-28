@@ -103,24 +103,6 @@ async function hasActiveMatches(): Promise<boolean> {
   return (matches?.length ?? 0) > 0;
 }
 
-// Also check if there are upcoming knockout matches we haven't imported yet
-async function hasUpcomingUnimportedFixtures(): Promise<boolean> {
-  const now = new Date();
-  const twoDaysFromNow = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
-
-  // Check if we should do a periodic sync for new knockout fixtures
-  // Only check once every 6 hours by looking at whether we have matches for upcoming days
-  const { data } = await supabase
-    .from("matches")
-    .select("id")
-    .gte("match_date", now.toISOString())
-    .lte("match_date", twoDaysFromNow.toISOString())
-    .limit(1);
-
-  // If no upcoming matches in next 2 days, maybe we need to fetch knockout fixtures
-  return (data?.length ?? 0) === 0;
-}
-
 async function fetchFixtures(date?: string): Promise<ApiFixture[]> {
   const dateParam = date ?? new Date().toISOString().split("T")[0];
   const res = await fetch(
@@ -324,9 +306,10 @@ export async function GET(request: Request) {
 
   try {
     const active = await hasActiveMatches();
-    const needsKnockoutSync = await hasUpcomingUnimportedFixtures();
 
-    if (!active && !needsKnockoutSync && !forceSync) {
+    // Solo trabajamos (y gastamos llamadas a la API) cuando hay un partido en
+    // curso/próximo o cuando se fuerza. En los minutos muertos no hacemos nada.
+    if (!active && !forceSync) {
       return NextResponse.json({
         ok: true,
         skipped: true,
@@ -335,31 +318,25 @@ export async function GET(request: Request) {
       });
     }
 
-    let updated = 0;
-    let created = 0;
-    let anyLive = false;
-
     // Sync today's fixtures (live scores)
-    if (active || forceSync) {
-      const result = await syncLiveFixtures();
-      updated = result.updated;
-      created = result.created;
-      anyLive = result.anyLive;
-    }
+    const result = await syncLiveFixtures();
+    let updated = result.updated;
+    let created = result.created;
+    const anyLive = result.anyLive;
 
-    // Sync upcoming knockout fixtures (uses 1 extra API call)
-    if (needsKnockoutSync || forceSync) {
-      const upcomingFixtures = await fetchAllUpcomingFixtures();
+    // Descubrir e importar cruces de eliminatorias que la API ya confirmó pero
+    // que todavía no tenemos. Corre en cada pasada activa (alrededor de cada
+    // partido), así los cruces aparecen días antes sin depender de que la DB
+    // esté vacía. Es idempotente: findMatchingMatch saltea los ya creados.
+    const upcomingFixtures = await fetchAllUpcomingFixtures();
+    for (const fixture of upcomingFixtures) {
+      const phase = mapRoundToPhase(fixture.league.round);
+      if (phase === "group") continue;
 
-      for (const fixture of upcomingFixtures) {
-        const phase = mapRoundToPhase(fixture.league.round);
-        if (phase === "group") continue;
-
-        const existingMatch = await findMatchingMatch(fixture);
-        if (!existingMatch) {
-          const result = await createKnockoutMatch(fixture);
-          if (result) created++;
-        }
+      const existingMatch = await findMatchingMatch(fixture);
+      if (!existingMatch) {
+        const knockout = await createKnockoutMatch(fixture);
+        if (knockout) created++;
       }
     }
 
