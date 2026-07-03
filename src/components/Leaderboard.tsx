@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Match, Profile, Team } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
+import PlayerHistory from "./PlayerHistory";
 
 // Racha: resultados consecutivos (acierto/error) en partidos finalizados,
 // del más reciente hacia atrás. 3+ aciertos seguidos 🔥, 3+ errores 🧊.
@@ -32,6 +33,7 @@ export default function Leaderboard({
   const [streaks, setStreaks] = useState<Map<string, StreakInfo>>(new Map());
   const [sharing, setSharing] = useState(false);
   const [livePoints, setLivePoints] = useState<Map<string, number>>(new Map());
+  const [historyProfile, setHistoryProfile] = useState<Profile | null>(null);
 
   const liveMatches = matches.filter(
     (m) => m.status === "live" || m.status === "halftime"
@@ -292,7 +294,9 @@ export default function Leaderboard({
             return (
               <div
                 key={profile.id}
-                className="flex items-center gap-2 sm:gap-3 py-1.5 sm:py-2 px-2 sm:px-3 rounded-lg hover:bg-background/50 transition-colors"
+                onClick={() => setHistoryProfile(profile)}
+                title="Ver historial"
+                className="flex items-center gap-2 sm:gap-3 py-1.5 sm:py-2 px-2 sm:px-3 rounded-lg hover:bg-background/50 transition-colors cursor-pointer"
               >
                 <span
                   className={`text-base sm:text-lg font-bold w-5 sm:w-6 text-center shrink-0 ${medalColor(index)}`}
@@ -338,6 +342,15 @@ export default function Leaderboard({
             );
           })}
         </div>
+      )}
+
+      {historyProfile && (
+        <PlayerHistory
+          profile={historyProfile}
+          matches={matches}
+          teams={teams}
+          onClose={() => setHistoryProfile(null)}
+        />
       )}
     </div>
   );
