@@ -6,7 +6,6 @@ import { createClient } from "@/lib/supabase/client";
 import MatchCard from "./MatchCard";
 import Leaderboard from "./Leaderboard";
 import OthersPredictions from "./OthersPredictions";
-import GroupStandings from "./GroupStandings";
 import KnockoutBracket from "./KnockoutBracket";
 import GoalCelebration from "./GoalCelebration";
 
@@ -19,7 +18,7 @@ interface MainTabsProps {
   leagueId?: string;
 }
 
-type Tab = "leaderboard" | "predictions" | "llaves" | "resto" | "grupos";
+type Tab = "leaderboard" | "predictions" | "resto" | "llaves";
 
 const phaseLabels: Record<string, string> = {
   round_of_32: "16avos de final",
@@ -296,9 +295,8 @@ export default function MainTabs({
   const tabs: { id: Tab; label: string; icon: string }[] = [
     { id: "leaderboard", label: "Posiciones", icon: "🏆" },
     { id: "predictions", label: "Pronósticos", icon: "🎯" },
-    { id: "llaves", label: "Llaves", icon: "⚔️" },
     { id: "resto", label: "Resto", icon: "👀" },
-    { id: "grupos", label: "Grupos", icon: "🏟️" },
+    { id: "llaves", label: "Llaves", icon: "⚔️" },
   ];
 
   return (
@@ -321,12 +319,12 @@ export default function MainTabs({
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1.5 sm:gap-2 mb-4 overflow-x-auto">
+      <div className="flex gap-1.5 sm:gap-2 mb-4">
         {tabs.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`flex-1 sm:flex-none whitespace-nowrap px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors cursor-pointer ${
+            className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors cursor-pointer ${
               tab === t.id
                 ? "bg-accent text-background"
                 : "bg-card border border-card-border text-muted hover:text-foreground"
@@ -345,8 +343,6 @@ export default function MainTabs({
           matches={matches}
           teams={teams}
         />
-      ) : tab === "grupos" ? (
-        <GroupStandings matches={matches} teams={teams} leagueId={leagueId} />
       ) : tab === "llaves" ? (
         <KnockoutBracket matches={matches} teams={teams} />
       ) : tab === "resto" ? (
