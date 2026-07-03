@@ -89,22 +89,27 @@ export default function PlayerHistory({
 
   const gap = (W - 2 * PAD_X) / Math.max(n - 1, 1);
   const spikeWidth = Math.min(gap * 0.35, 5);
-  const beatPoints: [number, number][] = [];
+  const beatPoints: { x: number; y: number; beat: number }[] = [];
   entries.forEach((e, i) => {
     const beat = beatOf(e.prediction.points);
     if (beat === 0) {
-      beatPoints.push([xAt(i), yAt(0)]);
+      beatPoints.push({ x: xAt(i), y: yAt(0), beat: 0 });
     } else {
       beatPoints.push(
-        [xAt(i) - spikeWidth, yAt(0)],
-        [xAt(i), yAt(beat)],
-        [xAt(i) + spikeWidth, yAt(0)]
+        { x: xAt(i) - spikeWidth, y: yAt(0), beat: 0 },
+        { x: xAt(i), y: yAt(beat), beat },
+        { x: xAt(i) + spikeWidth, y: yAt(0), beat: 0 }
       );
     }
   });
-  const linePath = beatPoints
-    .map(([x, y], i) => `${i === 0 ? "M" : "L"}${x},${y}`)
-    .join(" ");
+  // Un tramo por par de puntos: los que tocan un pico de errada van en rojo
+  const beatSegments = beatPoints.slice(1).map((p, i) => ({
+    x1: beatPoints[i].x,
+    y1: beatPoints[i].y,
+    x2: p.x,
+    y2: p.y,
+    down: beatPoints[i].beat < 0 || p.beat < 0,
+  }));
 
   const firstDate = n ? new Date(entries[0].match.match_date) : null;
   const lastDate = n ? new Date(entries[n - 1].match.match_date) : null;
@@ -199,13 +204,18 @@ export default function PlayerHistory({
                 viewBox={`0 0 ${W} ${H}`}
                 className="w-full h-auto bg-background/50 border border-card-border rounded-lg"
               >
-                <path
-                  d={linePath}
-                  fill="none"
-                  stroke="var(--accent)"
-                  strokeWidth={1.5}
-                  strokeLinejoin="round"
-                />
+                {beatSegments.map((s, i) => (
+                  <line
+                    key={i}
+                    x1={s.x1}
+                    y1={s.y1}
+                    x2={s.x2}
+                    y2={s.y2}
+                    stroke={s.down ? "#f87171" : "var(--accent)"}
+                    strokeWidth={1.5}
+                    strokeLinecap="round"
+                  />
+                ))}
                 {entries.map((e, i) => (
                   <circle
                     key={e.prediction.id}
