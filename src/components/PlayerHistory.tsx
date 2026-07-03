@@ -15,8 +15,6 @@ interface HistoryEntry {
   match: Match;
   prediction: Prediction;
   cumulative: number;
-  // Curva de "cómo viene": errada baja (-1), ganador queda igual, exacto sube (+1)
-  momentum: number;
 }
 
 const W = 320;
@@ -58,7 +56,6 @@ export default function PlayerHistory({
       matches.filter((m) => m.status === "finished").map((m) => [m.id, m])
     );
     let cumulative = 0;
-    let momentum = 0;
     return predictions
       .map((p) => ({ prediction: p, match: finishedMap.get(p.match_id) }))
       .filter((e): e is { prediction: Prediction; match: Match } => !!e.match)
@@ -68,10 +65,8 @@ export default function PlayerHistory({
           new Date(b.match.match_date).getTime()
       )
       .map((e) => {
-        const pts = e.prediction.points ?? 0;
-        cumulative += pts;
-        momentum += pts === 3 ? 1 : pts === 1 ? 0 : -1;
-        return { ...e, cumulative, momentum };
+        cumulative += e.prediction.points ?? 0;
+        return { ...e, cumulative };
       });
   }, [predictions, matches]);
 
@@ -80,20 +75,35 @@ export default function PlayerHistory({
   const ganadores = entries.filter((e) => e.prediction.points === 1).length;
   const erradas = entries.filter((e) => e.prediction.points === 0).length;
 
-  // Gráfico: la curva sube con un exacto, queda plana con un ganador y baja
-  // con una errada (arranca en 0)
+  // Gráfico estilo electrocardiograma: línea recta en el medio con un pico
+  // hacia arriba por cada exacto y hacia abajo por cada errada; los +1 siguen
+  // derecho por la línea.
   const n = entries.length;
-  const moms = entries.map((e) => e.momentum);
-  const maxV = Math.max(0, ...moms);
-  const minV = Math.min(0, ...moms);
-  const range = Math.max(maxV - minV, 1);
   const xAt = (i: number) =>
     PAD_X + (i * (W - 2 * PAD_X)) / Math.max(n - 1, 1);
   const yAt = (v: number) =>
-    PAD_TOP + ((maxV - v) * (H - PAD_TOP - PAD_BOTTOM)) / range;
+    PAD_TOP + ((1 - v) * (H - PAD_TOP - PAD_BOTTOM)) / 2;
 
-  const linePath = entries
-    .map((e, i) => `${i === 0 ? "M" : "L"}${xAt(i)},${yAt(e.momentum)}`)
+  const beatOf = (points: number | null) =>
+    points === 3 ? 1 : points === 1 ? 0 : -1;
+
+  const gap = (W - 2 * PAD_X) / Math.max(n - 1, 1);
+  const spikeWidth = Math.min(gap * 0.35, 5);
+  const beatPoints: [number, number][] = [];
+  entries.forEach((e, i) => {
+    const beat = beatOf(e.prediction.points);
+    if (beat === 0) {
+      beatPoints.push([xAt(i), yAt(0)]);
+    } else {
+      beatPoints.push(
+        [xAt(i) - spikeWidth, yAt(0)],
+        [xAt(i), yAt(beat)],
+        [xAt(i) + spikeWidth, yAt(0)]
+      );
+    }
+  });
+  const linePath = beatPoints
+    .map(([x, y], i) => `${i === 0 ? "M" : "L"}${x},${y}`)
     .join(" ");
 
   const firstDate = n ? new Date(entries[0].match.match_date) : null;
@@ -189,17 +199,6 @@ export default function PlayerHistory({
                 viewBox={`0 0 ${W} ${H}`}
                 className="w-full h-auto bg-background/50 border border-card-border rounded-lg"
               >
-                {/* Línea de arranque (0): arriba viene bien, abajo viene mal */}
-                <line
-                  x1={PAD_X}
-                  y1={yAt(0)}
-                  x2={W - PAD_X}
-                  y2={yAt(0)}
-                  stroke="var(--muted)"
-                  strokeWidth={0.5}
-                  strokeDasharray="3 3"
-                  opacity={0.5}
-                />
                 <path
                   d={linePath}
                   fill="none"
@@ -211,7 +210,7 @@ export default function PlayerHistory({
                   <circle
                     key={e.prediction.id}
                     cx={xAt(i)}
-                    cy={yAt(e.momentum)}
+                    cy={yAt(beatOf(e.prediction.points))}
                     r={n > 40 ? 1.5 : 2.5}
                     fill={pointsColor(e.prediction.points)}
                   />
