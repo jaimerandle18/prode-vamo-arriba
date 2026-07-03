@@ -117,7 +117,7 @@ export default function PlayerHistory({
       onClick={onClose}
     >
       <div
-        className="bg-card border border-card-border rounded-t-2xl sm:rounded-2xl w-full max-w-md max-h-[82dvh] sm:max-h-[88dvh] overflow-y-auto"
+        className="bg-card border border-card-border rounded-t-2xl sm:rounded-2xl w-full max-w-md max-h-[100dvh] sm:max-h-[88dvh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
