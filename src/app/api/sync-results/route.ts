@@ -231,6 +231,24 @@ async function createKnockoutMatch(fixture: ApiFixture) {
   return data;
 }
 
+// Descubrir e importar cruces de eliminatorias que la API ya confirmó pero
+// que todavía no tenemos. Es idempotente: findMatchingMatch saltea los ya creados.
+async function discoverKnockoutMatches(): Promise<number> {
+  let created = 0;
+  const upcomingFixtures = await fetchAllUpcomingFixtures();
+  for (const fixture of upcomingFixtures) {
+    const phase = mapRoundToPhase(fixture.league.round);
+    if (phase === "group") continue;
+
+    const existingMatch = await findMatchingMatch(fixture);
+    if (!existingMatch) {
+      const knockout = await createKnockoutMatch(fixture);
+      if (knockout) created++;
+    }
+  }
+  return created;
+}
+
 // Una pasada de sync: trae los fixtures del día y actualiza la DB
 async function syncLiveFixtures(): Promise<{
   updated: number;
@@ -308,12 +326,26 @@ export async function GET(request: Request) {
     const active = await hasActiveMatches();
 
     // Solo trabajamos (y gastamos llamadas a la API) cuando hay un partido en
-    // curso/próximo o cuando se fuerza. En los minutos muertos no hacemos nada.
+    // curso/próximo o cuando se fuerza. En los minutos muertos no hacemos nada,
+    // salvo el discovery de eliminatorias una vez por hora: hasActiveMatches
+    // mira solo la DB, así que un cruce nuevo que no está en la DB jamás
+    // despertaría al sync y quedaría sin crearse (pasó con ARG-SUI en 4tos).
     if (!active && !forceSync) {
+      if (new Date().getUTCMinutes() !== 0) {
+        return NextResponse.json({
+          ok: true,
+          skipped: true,
+          reason: "No hay partidos en curso ni próximos",
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      const created = await discoverKnockoutMatches();
       return NextResponse.json({
         ok: true,
-        skipped: true,
-        reason: "No hay partidos en curso ni próximos",
+        skipped: false,
+        discovery_only: true,
+        matches_created: created,
         timestamp: new Date().toISOString(),
       });
     }
@@ -324,21 +356,7 @@ export async function GET(request: Request) {
     let created = result.created;
     const anyLive = result.anyLive;
 
-    // Descubrir e importar cruces de eliminatorias que la API ya confirmó pero
-    // que todavía no tenemos. Corre en cada pasada activa (alrededor de cada
-    // partido), así los cruces aparecen días antes sin depender de que la DB
-    // esté vacía. Es idempotente: findMatchingMatch saltea los ya creados.
-    const upcomingFixtures = await fetchAllUpcomingFixtures();
-    for (const fixture of upcomingFixtures) {
-      const phase = mapRoundToPhase(fixture.league.round);
-      if (phase === "group") continue;
-
-      const existingMatch = await findMatchingMatch(fixture);
-      if (!existingMatch) {
-        const knockout = await createKnockoutMatch(fixture);
-        if (knockout) created++;
-      }
-    }
+    created += await discoverKnockoutMatches();
 
     // Send reminders for matches starting in ~10 minutes
     let reminders_sent = 0;
